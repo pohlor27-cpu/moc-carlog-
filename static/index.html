@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <!-- App Top Navigation Bar -->
+    <header class="navbar no-print">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon">🚗</div>
+                <div>
+                    <h1 class="brand-title">บันทึกการใช้รถราชการ</h1>
+                    <p class="brand-subtitle">ระบบบันทึกเลขไมล์ & พิมพ์แบบ 4 อัตโนมัติ</p>
+                </div>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab-btn active">📱 หน้าหลัก</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content no-print">
+
+        <!-- Active Vehicle Focus Banner -->
+        <section style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 20px; box-shadow: var(--shadow-md); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;">
+            <div>
+                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">รถยนต์ประจำพนักงานขับรถ</div>
+                <div id="top-car-plate" style="font-size: 1.5rem; font-weight: 700; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
+                    <span>🚙</span> ขก 225 นนทบุรี
+                </div>
+                <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
+                    ผู้ขับขี่: <strong id="top-driver-name" style="color: #fde047;">ป๋อ (กฤษณพัฒน์ แสงหล้า)</strong> | สิ้นเดือน: <strong>กันยายน 2569</strong>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="text-align: right; background: rgba(255,255,255,0.08); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12);">
+                    <div style="font-size: 0.75rem; color: #94a3b8;">เลขไมล์เริ่มต้น/ปัจจุบัน</div>
+                    <div id="top-car-mileage" style="font-size: 1.6rem; font-weight: 800; color: #34d399; font-family: monospace;">52,204</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">กิโลเมตร (กม.)</div>
+                </div>
+                <button type="button" onclick="openEditMileageModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 10px 14px; border-radius: var(--radius-md); font-family: 'Prompt', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <span style="font-size: 1.2rem;">⚙️</span>
+                    <span>แก้ไขไมล์</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 1. Driver Profile Selector (ผขร. 4 คน) -->
+        <section class="driver-select-section">
+            <div class="section-label">
+                <span>👤</span>
+                <span>เลือกพนักงานขับรถ (แตะเลือกชื่อของตนเอง):</span>
+            </div>
+            <div class="driver-grid" id="driver-grid">
+                <!-- Injected via JavaScript -->
+            </div>
+        </section>
+
+        <!-- 2. Big Action Buttons -->
+        <section class="action-banner" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <button class="big-btn big-btn-depart" onclick="openDepartModal()">
+                <div class="big-btn-icon">🚗</div>
+                <div class="big-btn-title">บันทึกเวลาออก</div>
+                <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์ออก</div>
+            </button>
+            <button class="big-btn big-btn-arrive" onclick="openArriveModal(null)">
+                <div class="big-btn-icon">🏁</div>
+                <div class="big-btn-title">บันทึกเวลากลับ</div>
+                <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์กลับ</div>
+            </button>
+            <button class="big-btn" onclick="openManualModal()" style="background: linear-gradient(135deg, #475569, #334155); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25);">
+                <div class="big-btn-icon">✏️</div>
+                <div class="big-btn-title">กรอกเลขไมล์เอง</div>
+                <div class="big-btn-sub">พิมพ์ลงตารางโดยตรง (ไม่ใช้รูป)</div>
+            </button>
+        </section>
+
+        <!-- 3. Ongoing / Active Trips (รถที่กำลังวิ่งอยู่) -->
+        <section class="active-trips-card" id="active-trips-card" style="display: none;">
+            <div class="active-trips-header">
+                <div style="font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px;">
+                    <span>🛣️</span> รถที่กำลังเดินทางอยู่ขณะนี้
+                </div>
+                <div class="active-badge">กำลังใช้งาน</div>
+            </div>
+            <div id="active-trips-list">
+                <!-- Injected via JS -->
+            </div>
+        </section>
+
+        <!-- 4. Monthly History & Report Table -->
+        <section class="history-section">
+            <div class="history-toolbar">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">📋</span>
+                    <strong style="font-size: 1.05rem;">ประวัติบันทึกการใช้รถ</strong>
+                </div>
+                
+                <div class="filter-group">
+                    <input type="month" id="filter-month" class="form-input" style="width: auto; padding: 8px 12px;">
+                    <select id="filter-vehicle" class="form-select" style="width: auto; padding: 8px 12px;">
+                        <option value="">-- ขก 225 นนทบุรี --</option>
+                    </select>
+                    <button class="btn-submit" onclick="generateForm4Print()" style="padding: 8px 14px; font-size: 0.9rem; background: #0f172a; display: flex; align-items: center; gap: 6px;">
+                        <span>🖨️</span> สั่งพิมพ์ / บันทึกเป็น PDF (แนวนอน)
+                    </button>
+                    <button class="btn-submit" onclick="downloadForm4Image()" style="padding: 8px 14px; font-size: 0.9rem; background: #059669; display: flex; align-items: center; gap: 6px;">
+                        <span>🖼️</span> เซฟเป็นรูปภาพ (ส่ง LINE)
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>เที่ยว</th>
+                            <th>ออกเดินทาง</th>
+                            <th>รถยนต์ / ผขร.</th>
+                            <th>สถานที่ไป</th>
+                            <th>ผู้รับรอง</th>
+                            <th>กลับถึง สนง.</th>
+                            <th>เลขไมล์ (ออก/กลับ)</th>
+                            <th>น้ำมัน</th>
+                            <th style="text-align:center;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-table-body">
+                        <!-- Injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal 1: บันทึกเวลาออก (Departure) -->
+    <div class="modal-overlay" id="modal-depart">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">🚗 บันทึกเวลาออกเดินทาง</div>
+                <button class="modal-close" onclick="closeDepartModal()">✕</button>
+            </div>
+            <form onsubmit="submitDeparture(event)">
+                
+                <!-- Vehicle Selection -->
+                <div class="form-group">
+                    <label class="form-label">เลือกรถยนต์ราชการ</label>
+                    <select id="depart-vehicle" class="form-select" required></select>
+                </div>
+
+                <!-- Camera / Photo Box with AI OCR -->
+                <div class="form-group">
+                    <label class="form-label">📸 ถ่ายรูปหน้าปัดไมล์รถยนต์ (AI อ่านเลขอัตโนมัติ)</label>
+                    <div class="camera-upload-box" onclick="document.getElementById('depart-photo-input').click()">
+                        <input type="file" id="depart-photo-input" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoSelected(event, 'depart')">
+                        <div id="depart-photo-placeholder">
+                            <div class="camera-icon">📷</div>
+                            <div style="font-weight: 600; color: #2563eb;">แตะเพื่อเปิดกล้องถ่ายไมล์</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">หรือเลือกรูปจากเครื่อง</div>
+                        </div>
+                        <img id="depart-photo-preview" class="camera-preview" alt="Preview">
+                        <div id="depart-ai-badge" class="ai-analyzing-badge" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">วันที่ออก</label>
+                        <input type="date" id="depart-date" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เวลาที่ออก</label>
+                        <input type="time" id="depart-time" class="form-input" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">เลขไมล์ตอนออก (กม.)</label>
+                    <input type="number" id="depart-mileage" class="form-input" placeholder="เช่น 52904" required style="font-size: 1.15rem; font-weight: 700; color: #2563eb;">
+                </div>
+
+                <!-- Destination & Quick Chips -->
+                <div class="form-group">
+                    <label class="form-label">สถานที่ไป / ภารกิจ</label>
+                    <input type="text" id="depart-destination" class="form-input" placeholder="พิมพ์สถานที่ หรือแตะปุ่มด่วนด้านล่าง" required>
+                    <div class="chips-container">
+                        <button type="button" class="chip-btn" onclick="setDestination('ศาลากลางจังหวัดเพชรบุรี')">📍 ศาลากลาง จ.เพชรบุรี</button>
+                        <button type="button" class="chip-btn" onclick="setDestination('กระทรวงพาณิชย์ (นนทบุรี)')">📍 กระทรวงพาณิชย์</button>
+                        <button type="button" class="chip-btn" onclick="setDestination('ตรวจตลาดสดเทศบาลเมืองเพชรบุรี')">📍 ตรวจตลาดสด</button>
+                        <button type="button" class="chip-btn" onclick="setDestination('อำเภอชะอำ / หัวหิน')">📍 ชะอำ / หัวหิน</button>
+                        <button type="button" class="chip-btn" onclick="setDestination('ไปรษณีย์ / ธนาคาร')">📍 ไปรษณีย์ / ธนาคาร</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ (เว้นว่างได้)</label>
+                    <input type="text" id="depart-approver" class="form-input" placeholder="เช่น หัวหน้ากลุ่มยุทธศาสตร์ฯ / พาณิชย์จังหวัด">
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeDepartModal()">ยกเลิก</button>
+                    <button type="submit" id="btn-depart-submit" class="btn-submit">💾 บันทึกเวลาออก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: บันทึกเวลากลับ (Arrival) -->
+    <div class="modal-overlay" id="modal-arrive">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">🏁 บันทึกรถกลับถึงสำนักงาน</div>
+                <button class="modal-close" onclick="closeArriveModal()">✕</button>
+            </div>
+            <form onsubmit="submitArrival(event)">
+                
+                <div id="arrive-trip-info" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; margin-bottom: 16px;"></div>
+
+                <!-- Camera / Photo Box with AI OCR -->
+                <div class="form-group">
+                    <label class="form-label">📸 ถ่ายรูปหน้าปัดไมล์ตอนกลับ (AI อ่านเลขอัตโนมัติ)</label>
+                    <div class="camera-upload-box" onclick="document.getElementById('arrive-photo-input').click()">
+                        <input type="file" id="arrive-photo-input" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoSelected(event, 'arrive')">
+                        <div id="arrive-photo-placeholder">
+                            <div class="camera-icon">📷</div>
+                            <div style="font-weight: 600; color: #059669;">แตะเพื่อเปิดกล้องถ่ายไมล์ตอนกลับ</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">หรือเลือกรูปจากเครื่อง</div>
+                        </div>
+                        <img id="arrive-photo-preview" class="camera-preview" alt="Preview">
+                        <div id="arrive-ai-badge" class="ai-analyzing-badge" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">วันที่กลับถึง</label>
+                        <input type="date" id="arrive-date" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เวลากลับถึง</label>
+                        <input type="time" id="arrive-time" class="form-input" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">เลขไมล์ตอนกลับ (กม.)</label>
+                        <span id="calc-distance-badge" style="font-size: 0.85rem; font-weight: 700; color: #059669;"></span>
+                    </div>
+                    <input type="number" id="arrive-mileage" class="form-input" placeholder="เช่น 53020" required style="font-size: 1.15rem; font-weight: 700; color: #059669;">
+                </div>
+
+                <!-- Fuel Refill Section -->
+                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                    <div style="font-weight: 600; color: #b45309; font-size: 0.9rem; margin-bottom: 8px;">⛽ การเบิกจ่ายน้ำมันเชื้อเพลิง (ถ้ามีเติมระหว่างทาง)</div>
+                    <div class="form-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">จำนวน (ลิตร)</label>
+                            <input type="number" step="0.01" id="arrive-fuel-liters" class="form-input" placeholder="เช่น 45.5">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">ผู้สั่งจ่ายน้ำมัน</label>
+                            <input type="text" id="arrive-fuel-authorizer" class="form-input" placeholder="เช่น พจ.เพชรบุรี">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeArriveModal()">ยกเลิก</button>
+                    <button type="submit" id="btn-arrive-submit" class="btn-submit" style="background: #059669;">💾 บันทึกเวลากลับ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: กรอกรายละเอียดทั้งเที่ยวด้วยตนเอง (Manual Full Trip Entry) -->
+    <div class="modal-overlay" id="modal-manual">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">✏️ กรอกเลขไมล์และรายละเอียดด้วยตนเอง</div>
+                <button class="modal-close" onclick="closeManualModal()">✕</button>
+            </div>
+            <form onsubmit="submitManualTrip(event)">
+                
+                <div class="form-group">
+                    <label class="form-label">รถยนต์ราชการ</label>
+                    <select id="manual-vehicle" class="form-select" required></select>
+                </div>
+
+                <!-- ออกเดินทาง -->
+                <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+                    <div style="font-weight: 700; color: #1d4ed8; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>🚗</span> ข้อมูลตอนออกเดินทาง
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">วันที่ออก</label>
+                            <input type="date" id="manual-depart-date" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">เวลาที่ออก</label>
+                            <input type="time" id="manual-depart-time" class="form-input" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">เลขไมล์ตอนออก (กม.)</label>
+                        <input type="number" id="manual-depart-mileage" class="form-input" placeholder="เช่น 52204" required style="font-size: 1.1rem; font-weight: 700; color: #2563eb;" oninput="updateManualDistanceCalc()">
+                    </div>
+                </div>
+
+                <!-- ปลายทาง & ผู้รับรอง -->
+                <div class="form-group">
+                    <label class="form-label">สถานที่ไป / ภารกิจ</label>
+                    <input type="text" id="manual-destination" class="form-input" placeholder="เช่น ศาลากลางจังหวัดเพชรบุรี" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ</label>
+                    <input type="text" id="manual-approver" class="form-input" placeholder="เช่น หัวหน้ากลุ่มยุทธศาสตร์ฯ">
+                </div>
+
+                <!-- กลับถึง สนง. -->
+                <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="font-weight: 700; color: #15803d; display: flex; align-items: center; gap: 6px;">
+                            <span>🏁</span> ข้อมูลตอนกลับถึง สนง.
+                        </div>
+                        <span id="manual-calc-distance-badge" style="font-size: 0.85rem; font-weight: 700; color: #15803d;"></span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">วันที่กลับถึง</label>
+                            <input type="date" id="manual-arrive-date" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">เวลากลับถึง</label>
+                            <input type="time" id="manual-arrive-time" class="form-input" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">เลขไมล์ตอนกลับ (กม.)</label>
+                        <input type="number" id="manual-arrive-mileage" class="form-input" placeholder="เช่น 52250" required style="font-size: 1.1rem; font-weight: 700; color: #15803d;" oninput="updateManualDistanceCalc()">
+                    </div>
+                </div>
+
+                <!-- น้ำมัน -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">น้ำมันที่เติม (ลิตร ถ้ามี)</label>
+                        <input type="number" step="0.01" id="manual-fuel-liters" class="form-input" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ผู้สั่งจ่ายน้ำมัน</label>
+                        <input type="text" id="manual-fuel-authorizer" class="form-input" placeholder="เช่น พจ.เพชรบุรี">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeManualModal()">ยกเลิก</button>
+                    <button type="submit" id="btn-manual-submit" class="btn-submit" style="background: #0f172a;">💾 บันทึกลงตารางทันที</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 4: แก้ไขเลขไมล์เริ่มต้นของรถ (Edit Vehicle Starting Mileage) -->
+    <div class="modal-overlay" id="modal-edit-mileage">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ กำหนดเลขไมล์เริ่มต้นของรถ</div>
+                <button class="modal-close" onclick="closeEditMileageModal()">✕</button>
+            </div>
+            <form onsubmit="submitEditMileage(event)">
+                <div class="form-group">
+                    <label class="form-label">เลือกรถยนต์</label>
+                    <select id="edit-mileage-vehicle" class="form-select" onchange="onEditVehicleChange()"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">เลขไมล์เริ่มต้น (กม.)</label>
+                    <input type="number" id="edit-mileage-input" class="form-input" required style="font-size: 1.3rem; font-weight: 800; color: #059669;">
+                    <small style="color: #64748b; margin-top: 4px; display: block;">* ยอดยกมาจากสิ้นเดือนก่อน หรือเลขไมล์ปัจจุบันของรถคันนี้</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditMileageModal()">ยกเลิก</button>
+                    <button type="submit" id="btn-edit-mileage-submit" class="btn-submit" style="background: #059669;">💾 บันทึกเลขไมล์</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- 5. TEMPLATE เอกสารราชการ: บันทึกการใช้รถราชการ (แบบ 4) สำหรับสั่งพิมพ์ -->
+    <!-- ------------------------------------------------------------- -->
+    <div id="print-area" class="print-form-container">
+        <div class="form4-page">
+            
+            <div class="form4-header-top">
+                <span>แบบ 4</span>
+            </div>
+
+            <div class="form4-title-row">
+                <span>บันทึกการใช้รถราชการ</span>
+            </div>
+
+            <div class="form4-meta-row">
+                <div>
+                    หมายเลขทะเบียน: <strong id="print-plate">.....................................</strong>
+                </div>
+                <div>
+                    ยอดยกมาจากเมื่อสิ้นเดือน: <span id="print-prev-month">............................</span> เลขไมล์ที่: <strong id="print-start-mileage">.............</strong>
+                </div>
+            </div>
+
+            <table class="form4-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 5%;">ลำดับ<br>เที่ยว</th>
+                        <th colspan="3" style="width: 25%;">ออกเดินทาง</th>
+                        <th rowspan="2" style="width: 10%;">ผู้รับรอง</th>
+                        <th rowspan="2" style="width: 15%;">สถานที่ไป</th>
+                        <th colspan="4" style="width: 27%;">รถกลับถึงสำนักงาน</th>
+                        <th rowspan="2" style="width: 8%;">พนักงาน<br>ขับรถ</th>
+                        <th colspan="2" style="width: 10%;">การเบิกจ่ายน้ำมันเชื้อเพลิง</th>
+                    </tr>
+                    <tr>
+                        <th style="width: 7%;">ว/ด/ป</th>
+                        <th style="width: 6%;">เวลา</th>
+                        <th style="width: 12%;">เลขไมล์</th>
+                        <th style="width: 7%;">ว/ด/ป</th>
+                        <th style="width: 6%;">เวลา</th>
+                        <th style="width: 7%;">ระยะทาง</th>
+                        <th style="width: 7%;">เลขไมล์</th>
+                        <th style="width: 5%;">จำนวน<br>(ลิตร)</th>
+                        <th style="width: 5%;">ผู้สั่งจ่าย<br>น้ำมัน</th>
+                    </tr>
+                </thead>
+                <tbody id="print-table-body">
+                    <!-- Populated dynamically via JS -->
+                </tbody>
+            </table>
+
+            <div class="form4-footer">
+                <div class="form4-footer-col">
+                    <div>สรุปบันทึกการใช้รถยนต์ ประจำเดือน: <strong id="print-sum-month">...................</strong> พ.ศ. <strong id="print-sum-year">...........</strong></div>
+                    <div>การใช้น้ำมัน: <strong id="print-sum-fuel">............</strong> ลิตร</div>
+                </div>
+                <div class="form4-footer-col">
+                    <div>จำนวนเที่ยว: <strong id="print-sum-trips">............</strong> เที่ยว</div>
+                    <div>ระยะทาง กม.: <strong id="print-sum-distance">............</strong> กม.</div>
+                </div>
+                <div class="form4-footer-col">
+                    <div class="signature-line">
+                        ผู้บันทึก: <strong id="print-driver-name">................................................</strong><br>
+                        ตำแหน่ง พนักงานขับรถยนต์
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
