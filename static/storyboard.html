@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MOC Phetchaburi - Vehicle Intelligence Storyboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Apple Color Palette */
+            --bg-dark: #000000;
+            --surface-stage: #0d0d0e;
+            --surface-card: #1c1c1e;
+            --surface-card-hover: #242426;
+            --surface-glass: rgba(28, 28, 30, 0.75);
+            --surface-glass-border: rgba(255, 255, 255, 0.12);
+            --hairline: rgba(255, 255, 255, 0.08);
+            
+            --text-primary: #ffffff;
+            --text-secondary: #86868b;
+            --text-muted: #636366;
+            
+            --apple-blue: #0071e3;
+            --apple-blue-glow: rgba(0, 113, 227, 0.35);
+            
+            /* Apple Activity Rings */
+            --ring-red: #FA114F;
+            --ring-green: #A8FF00;
+            --ring-cyan: #00F0FF;
+            --ring-purple: #BF5AF2;
+            
+            --gold-light: #FFF6D6;
+            --gold-primary: #FFD700;
+            --gold-dark: #B45309;
+            
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 22px;
+            --radius-pill: 9999px;
+            
+            --transition-smooth: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Prompt", sans-serif;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* Top Bar */
+        .storyboard-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-bottom: 1px solid var(--surface-glass-border);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+        }
+
+        .brand-cluster {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            background: rgba(255, 215, 0, 0.06);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: var(--radius-sm);
+        }
+
+        .brand-badge span {
+            font-family: 'Cinzel', serif;
+            font-weight: 900;
+            font-size: 0.95rem;
+            letter-spacing: 0.12em;
+            background: linear-gradient(180deg, var(--gold-light), var(--gold-primary), var(--gold-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-title-group h1 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-title-group p {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pill-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            padding: 6px 16px;
+            border-radius: var(--radius-pill);
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .pill-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.02);
+        }
+
+        .pill-btn.primary {
+            background: var(--apple-blue);
+            border-color: var(--apple-blue);
+            box-shadow: 0 4px 14px var(--apple-blue-glow);
+        }
+
+        .pill-btn.primary:hover {
+            background: #0077ed;
+        }
+
+        /* Hero Stage */
+        .hero-stage {
+            padding: 140px 32px 80px;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-glow {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 550px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(0, 113, 227, 0.18) 0%, rgba(191, 90, 242, 0.08) 45%, transparent 70%);
+            filter: blur(50px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .hero-eyebrow {
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--apple-blue);
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-headline {
+            font-size: clamp(2.2rem, 5vw, 4rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(180deg, #FFFFFF 40%, rgba(255, 255, 255, 0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-subhead {
+            font-size: clamp(1.05rem, 2vw, 1.3rem);
+            color: var(--text-secondary);
+            max-width: 780px;
+            margin: 0 auto 36px;
+            font-weight: 300;
+            line-height: 1.5;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Timeline Scrub Bar */
+        .timeline-bar-wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto 60px;
+            background: var(--surface-card);
+            border: 1px solid var(--surface-glass-border);
+            border-radius: var(--radius-pill);
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+        }
+
+        .scene-step-tab {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: var(--radius-pill);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            background: transparent;
+        }
+
+        .scene-step-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .scene-step-tab.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .scene-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: var(--transition-smooth);
+        }
+
+        .scene-step-tab.active .scene-dot {
+            background: var(--apple-blue);
+            box-shadow: 0 0 10px var(--apple-blue);
+        }
+
+        /* Storyboard Grid & Scenes */
+        .storyboard-container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 60px;
+        }
+
+        .scene-card {
+            background: var(--surface-card);
+            border: 1px solid var(--surface-glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 480px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+            transition: var(--transition-smooth);
+            position: relative;
+        }
+
+        .scene-card:hover {
+            border-color: rgba(255, 255, 255, 0.22);
+            transform: translateY(-4px);
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+        }
+
+        @media (max-width: 960px) {
+            .scene-card {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Narrative Column */
+        .scene-narrative {
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+        }
+
+        .scene-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--apple-blue);
+            margin-bottom: 16px;
+        }
+
+        .scene-badge-pill {
+            background: rgba(0, 113, 227, 0.15);
+            border: 1px solid rgba(0, 113, 227, 0.3);
+            padding: 3px 10px;
+            border-radius: var(--radius-pill);
+        }
+
+        .scene-title {
+            font-size: 1.85rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+            color: #ffffff;
+            line-height: 1.25;
+        }
+
+        .scene-desc {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.65;
+            margin-bottom: 24px;
+            font-weight: 300;
+        }
+
+        .scene-highlights {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .scene-highlights li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .highlight-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Hybrid Animation Stage Column */
+        .scene-visual {
+            background: #0d0d0e;
+            border-left: 1px solid var(--hairline);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            padding: 32px;
+        }
+
+        @media (max-width: 960px) {
+            .scene-visual {
+                border-left: none;
+                border-top: 1px solid var(--hairline);
+                min-height: 340px;
+            }
+        }
+
+        /* -------------------------------------------------------------
+           HYBRID ANIMATION 1: Vision AI Laser Mileage Scanner
+           ------------------------------------------------------------- */
+        .scanner-frame {
+            width: 320px;
+            height: 220px;
+            border: 2px solid rgba(0, 113, 227, 0.5);
+            border-radius: 16px;
+            position: relative;
+            background: radial-gradient(circle, rgba(0, 113, 227, 0.08) 0%, rgba(0,0,0,0.6) 80%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 113, 227, 0.25);
+        }
+
+        .laser-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00F0FF, #0071e3, transparent);
+            box-shadow: 0 0 16px #00F0FF;
+            animation: laserSweep 2.8s infinite ease-in-out;
+        }
+
+        @keyframes laserSweep {
+            0%, 100% { top: 10%; opacity: 0.2; }
+            50% { top: 85%; opacity: 1; }
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-color: #00F0FF;
+            border-style: solid;
+        }
+        .hud-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+        .hud-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+        .hud-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+        .hud-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
+        .scanned-digits {
+            font-family: 'SF Pro Display', monospace;
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+            animation: digitPulse 1.8s infinite alternate;
+        }
+
+        @keyframes digitPulse {
+            0% { transform: scale(0.98); opacity: 0.85; }
+            100% { transform: scale(1.03); opacity: 1; text-shadow: 0 0 25px rgba(0, 240, 255, 0.9); }
+        }
+
+        .scanner-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            color: #00F0FF;
+            text-transform: uppercase;
+            margin-top: 8px;
+            font-weight: 600;
+        }
+
+        /* -------------------------------------------------------------
+           HYBRID ANIMATION 2: 4 Activity Rings (Bento Fleet)
+           ------------------------------------------------------------- */
+        .rings-stage {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            width: 260px;
+            height: 260px;
+        }
+
+        .ring-svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        .ring-circle {
+            fill: none;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1.5s ease-in-out;
+        }
+
+        .ring-bg {
+            opacity: 0.15;
+        }
+
+        .ring-red { stroke: var(--ring-red); stroke-dasharray: 691; stroke-dashoffset: 140; animation: ringRotate1 6s infinite alternate ease-in-out; }
+        .ring-green { stroke: var(--ring-green); stroke-dasharray: 534; stroke-dashoffset: 90; animation: ringRotate2 5s infinite alternate ease-in-out; }
+        .ring-cyan { stroke: var(--ring-cyan); stroke-dasharray: 377; stroke-dashoffset: 60; animation: ringRotate3 4s infinite alternate ease-in-out; }
+        .ring-purple { stroke: var(--ring-purple); stroke-dasharray: 220; stroke-dashoffset: 35; animation: ringRotate4 3.5s infinite alternate ease-in-out; }
+
+        @keyframes ringRotate1 { 0% { stroke-dashoffset: 200; } 100% { stroke-dashoffset: 100; } }
+        @keyframes ringRotate2 { 0% { stroke-dashoffset: 160; } 100% { stroke-dashoffset: 50; } }
+        @keyframes ringRotate3 { 0% { stroke-dashoffset: 120; } 100% { stroke-dashoffset: 30; } }
+        @keyframes ringRotate4 { 0% { stroke-dashoffset: 80; } 100% { stroke-dashoffset: 20; } }
+
+        .rings-center-info {
+            position: absolute;
+            text-align: center;
+        }
+
+        .rings-center-info .car-count {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1;
+        }
+
+        .rings-center-info .car-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+        }
+
+        /* -------------------------------------------------------------
+           HYBRID ANIMATION 3: Master Vault & 2424 Key Ring
+           ------------------------------------------------------------- */
+        .vault-container {
+            width: 280px;
+            height: 280px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .vault-outer-ring {
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            border: 2px dashed rgba(255, 215, 0, 0.4);
+            border-radius: 50%;
+            animation: spinClockwise 20s linear infinite;
+        }
+
+        .vault-inner-ring {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-top-color: var(--gold-primary);
+            border-bottom-color: var(--gold-primary);
+            border-radius: 50%;
+            animation: spinCounter 12s linear infinite;
+        }
+
+        @keyframes spinClockwise { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spinCounter { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+        .vault-core {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(28, 28, 30, 0.95) 70%);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.25);
+        }
+
+        .vault-pin {
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-family: monospace;
+            background: linear-gradient(180deg, var(--gold-light), var(--gold-primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.1em;
+        }
+
+        .vault-tag {
+            font-size: 0.65rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.05em;
+        }
+
+        /* -------------------------------------------------------------
+           HYBRID ANIMATION 4: 1-Click Batch Form 4 Engine
+           ------------------------------------------------------------- */
+        .batch-engine-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            position: relative;
+        }
+
+        .pdf-cards-stack {
+            position: relative;
+            width: 200px;
+            height: 150px;
+        }
+
+        .pdf-sheet {
+            position: absolute;
+            width: 140px;
+            height: 180px;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: var(--transition-smooth);
+        }
+
+        .pdf-sheet:nth-child(1) { left: 0px; top: 0px; transform: rotate(-6deg); z-index: 1; opacity: 0.6; }
+        .pdf-sheet:nth-child(2) { left: 20px; top: 6px; transform: rotate(-2deg); z-index: 2; opacity: 0.8; }
+        .pdf-sheet:nth-child(3) { left: 40px; top: 12px; transform: rotate(4deg); z-index: 3; opacity: 0.9; }
+        .pdf-sheet:nth-child(4) { 
+            left: 60px; 
+            top: 18px; 
+            transform: rotate(8deg); 
+            z-index: 4; 
+            opacity: 1;
+            animation: sheetPop 4s infinite ease-in-out;
+        }
+
+        @keyframes sheetPop {
+            0%, 100% { transform: rotate(8deg) translateY(0); }
+            50% { transform: rotate(4deg) translateY(-14px); box-shadow: 0 20px 40px rgba(0, 113, 227, 0.4); }
+        }
+
+        .sheet-line {
+            height: 5px;
+            background: #e5e5ea;
+            border-radius: 2px;
+        }
+        .sheet-line.title { background: #0066cc; width: 60%; height: 7px; }
+        .sheet-line.w80 { width: 80%; }
+        .sheet-line.w50 { width: 50%; }
+        .sheet-line.w90 { width: 90%; }
+
+        .print-pulse-btn {
+            margin-top: 40px;
+            background: linear-gradient(135deg, #0071e3, #005bb5);
+            color: #ffffff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 8px 18px;
+            border-radius: var(--radius-pill);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px var(--apple-blue-glow);
+        }
+
+        /* Footer & Master Spec */
+        .storyboard-footer {
+            border-top: 1px solid var(--surface-glass-border);
+            padding: 60px 32px 80px;
+            background: var(--surface-stage);
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-family: 'Cinzel', serif;
+            font-size: 1.8rem;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            background: linear-gradient(180deg, var(--gold-light), var(--gold-primary), var(--gold-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        .footer-desc {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 28px;
+            line-height: 1.6;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sticky Navigation Bar -->
+    <nav class="storyboard-nav">
+        <div class="brand-cluster">
+            <div class="brand-badge">
+                <span>MOC</span>
+            </div>
+            <div class="brand-title-group">
+                <h1>บันทึกการใช้รถราชการ (แบบ 4)</h1>
+                <p>สำนักงานพาณิชย์จังหวัดเพชรบุรี · สตอรี่บอร์ดสรุปสถาปัตยกรรมระบบ</p>
+            </div>
+        </div>
+        <div class="nav-controls">
+            <a href="/" class="pill-btn">📱 หน้าเว็บระบบจริง</a>
+            <button class="pill-btn primary" onclick="autoPlayStoryboard()">▶ เล่นอนิเมชั่นพรีเซนต์</button>
+        </div>
+    </nav>
+
+    <!-- Hero Stage -->
+    <header class="hero-stage">
+        <div class="hero-glow"></div>
+        <p class="hero-eyebrow">Interactive Storyboard &amp; Architecture</p>
+        <h2 class="hero-headline">นิยามใหม่แห่งระบบยานพาหนะราชการ</h2>
+        <p class="hero-subhead">
+            สรุปภาพรวมฟังก์ชัน สถาปัตยกรรมความปลอดภัย และขั้นตอนการทำงานระบบบันทึกการใช้รถราชการ (แบบ 4)
+            ด้วยความเรียบง่าย แม่นยำ และทรงพลังตามมาตรฐาน Apple Design
+        </p>
+
+        <!-- Timeline Controller Scrub Bar -->
+        <div class="timeline-bar-wrap">
+            <button class="scene-step-tab active" onclick="scrollToScene('scene-1', this)">
+                <span class="scene-dot"></span>
+                <span>01. สแกนไมล์ AI</span>
+            </button>
+            <button class="scene-step-tab" onclick="scrollToScene('scene-2', this)">
+                <span class="scene-dot"></span>
+                <span>02. 4 Activity Rings</span>
+            </button>
+            <button class="scene-step-tab" onclick="scrollToScene('scene-3', this)">
+                <span class="scene-dot"></span>
+                <span>03. Master Vault 2424</span>
+            </button>
+            <button class="scene-step-tab" onclick="scrollToScene('scene-4', this)">
+                <span class="scene-dot"></span>
+                <span>04. 1-Click แบบ 4</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Storyboard Container -->
+    <main class="storyboard-container">
+
+        <!-- ========================================== -->
+        <!-- SCENE 01: DRIVER & AI OCR VISION SCANNER   -->
+        <!-- ========================================== -->
+        <article class="scene-card" id="scene-1">
+            <div class="scene-narrative">
+                <div class="scene-tag">
+                    <span class="scene-badge-pill">Scene 01</span>
+                    <span>มุมมองพนักงานขับรถ (ผขร.)</span>
+                </div>
+                <h3 class="scene-title">บันทึกเลขไมล์รวดเร็ว &amp; แม่นยำด้วย AI Vision OCR</h3>
+                <p class="scene-desc">
+                    เปลี่ยนจากการจดบันทึกบนกระดาษที่เสี่ยงต่อการผิดพลาด เป็นการถ่ายภาพหน้าปัดรถยนต์ ระบบจะใช้ AI Vision วิเคราะห์สกัดตัวเลขไมล์ปัจจุบันให้อัตโนมัติ พร้อมตรวจสอบความต่อเนื่องของระยะทางทันที
+                </p>
+                <ul class="scene-highlights">
+                    <li>
+                        <div class="highlight-icon">✓</div>
+                        <span><strong>Camera &amp; Upload Integration:</strong> ถ่ายภาพหน้าปัดแล้ววิเคราะห์ในเสี้ยววินาที</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon">✓</div>
+                        <span><strong>Milestone Mileage Guard:</strong> แจ้งเตือนรอบเปลี่ยนน้ำมันเครื่องทุก 10,000 กม.</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon">✓</div>
+                        <span><strong>Fast Booking:</strong> เลือกสถานที่เดินทาง ปลายทาง และวัตถุประสงค์ราชการได้ทันที</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="scene-visual">
+                <div class="scanner-frame">
+                    <div class="laser-line"></div>
+                    <div class="hud-corner hud-tl"></div>
+                    <div class="hud-corner hud-tr"></div>
+                    <div class="hud-corner hud-bl"></div>
+                    <div class="hud-corner hud-br"></div>
+                    <div class="scanned-digits">052,219</div>
+                    <div class="scanner-label">AI OCR Scan Locked · KM</div>
+                </div>
+            </div>
+        </article>
+
+        <!-- ========================================== -->
+        <!-- SCENE 02: 4-CAR FLEET & ACTIVITY RINGS     -->
+        <!-- ========================================== -->
+        <article class="scene-card" id="scene-2">
+            <div class="scene-narrative">
+                <div class="scene-tag">
+                    <span class="scene-badge-pill">Scene 02</span>
+                    <span>การติดตามสุขภาพยานพาหนะ</span>
+                </div>
+                <h3 class="scene-title">แดชบอร์ดติดตาม 4 คัน &amp; Apple Activity Rings</h3>
+                <p class="scene-desc">
+                    ติดตามสถานะรถประจำสำนักงานทั้ง 4 คัน (ขก 225, กอ 409, ขก 192, นจ 4648) ผ่าน Bento Card และวงแหวนแสดงสถานะรอบการบำรุงรักษาน้ำมันเครื่อง ช่วยให้ฝ่ายบริหารวางแผนการใช้งานได้อย่างมีประสิทธิภาพสูงสุด
+                </p>
+                <ul class="scene-highlights">
+                    <li>
+                        <div class="highlight-icon" style="color: var(--ring-red);">●</div>
+                        <span><strong>ขก 225 นนทบุรี:</strong> ติดตามระยะทางวิ่งสะสมและสุขภาพเครื่องยนต์</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon" style="color: var(--ring-green);">●</div>
+                        <span><strong>กอ 409 นนทบุรี:</strong> สถานะความพร้อมใช้งานและบันทึกประวัติการเติมน้ำมัน</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon" style="color: var(--ring-cyan);">●</div>
+                        <span><strong>ขก 192 &amp; นจ 4648:</strong> ระบบวัดรอบถ่ายน้ำมันเครื่องแม่นยำ (ป้ายคอพวงมาลัย)</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="scene-visual">
+                <div class="rings-stage">
+                    <svg class="ring-svg" viewBox="0 0 260 260">
+                        <!-- Red Ring (Radius 110) -->
+                        <circle class="ring-circle ring-bg" cx="130" cy="130" r="110" stroke="#FA114F" stroke-width="14"></circle>
+                        <circle class="ring-circle ring-red" cx="130" cy="130" r="110" stroke-width="14"></circle>
+
+                        <!-- Green Ring (Radius 85) -->
+                        <circle class="ring-circle ring-bg" cx="130" cy="130" r="85" stroke="#A8FF00" stroke-width="14"></circle>
+                        <circle class="ring-circle ring-green" cx="130" cy="130" r="85" stroke-width="14"></circle>
+
+                        <!-- Cyan Ring (Radius 60) -->
+                        <circle class="ring-circle ring-bg" cx="130" cy="130" r="60" stroke="#00F0FF" stroke-width="14"></circle>
+                        <circle class="ring-circle ring-cyan" cx="130" cy="130" r="60" stroke-width="14"></circle>
+
+                        <!-- Purple Ring (Radius 35) -->
+                        <circle class="ring-circle ring-bg" cx="130" cy="130" r="35" stroke="#BF5AF2" stroke-width="14"></circle>
+                        <circle class="ring-circle ring-purple" cx="130" cy="130" r="35" stroke-width="14"></circle>
+                    </svg>
+                    <div class="rings-center-info">
+                        <div class="car-count">4</div>
+                        <div class="car-label">FLEET CARS</div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- ========================================== -->
+        <!-- SCENE 03: DUAL-TIER PIN & MASTER VAULT     -->
+        <!-- ========================================== -->
+        <article class="scene-card" id="scene-3">
+            <div class="scene-narrative">
+                <div class="scene-tag">
+                    <span class="scene-badge-pill">Scene 03</span>
+                    <span>ระบบความปลอดภัยสองชั้น</span>
+                </div>
+                <h3 class="scene-title">Master Vault ห้องนิรภัยความปลอดภัยสูง (PIN: 2424)</h3>
+                <p class="scene-desc">
+                    แยกสิทธิ์ระหว่างเจ้าหน้าที่ทั่วไป (PIN: 9999) และผู้ดูแลระบบหลักของพี่ป๋อ (Master PIN: 2424) เพื่อควบคุมการตั้งค่าสำคัญ รีเซ็ตรหัสผ่านเจ้าหน้าที่ในคลิกเดียว และจัดการเชื่อมต่อ Cloud Backup ได้อย่างปลอดภัย
+                </p>
+                <ul class="scene-highlights">
+                    <li>
+                        <div class="highlight-icon">🔒</div>
+                        <span><strong>Tier 1 Staff PIN (9999):</strong> เข้าถึงแดชบอร์ดและพิมพ์รายงานแบบ 4</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon">👑</div>
+                        <span><strong>Tier 2 Master PIN (2424):</strong> สิทธิ์ขาดในการรีเซ็ต PIN เจ้าหน้าที่ และจัดการระบบคลาวด์</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon">🛡️</div>
+                        <span><strong>Zero Exposure:</strong> ซ่อนเมนูเชื่อมต่อ Google Drive ไว้เฉพาะในห้องนิรภัย Master Vault</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="scene-visual">
+                <div class="vault-container">
+                    <div class="vault-outer-ring"></div>
+                    <div class="vault-inner-ring"></div>
+                    <div class="vault-core">
+                        <div class="vault-pin">2424</div>
+                        <div class="vault-tag">MASTER VAULT</div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- ========================================== -->
+        <!-- SCENE 04: 1-CLICK BATCH FORM 4 GENERATOR   -->
+        <!-- ========================================== -->
+        <article class="scene-card" id="scene-4">
+            <div class="scene-narrative">
+                <div class="scene-tag">
+                    <span class="scene-badge-pill">Scene 04</span>
+                    <span>ระบบรายงานมาตรฐานราชการ</span>
+                </div>
+                <h3 class="scene-title">พิมพ์แบบ 4 ครบ 4 คัน รวดเดียวในคลิกเดียว (Batch Engine)</h3>
+                <p class="scene-desc">
+                    ประมวลผลข้อมูลการเดินทาง ประจำเดือนของรถทุกคัน สรุปเป็นแบบฟอร์มบันทึกการใช้รถราชการ (แบบ 4) ตามระเบียบสำนักนายกรัฐมนตรี พร้อมพิมพ์ออกเอกสารหรือบันทึกเป็น PDF ได้ทันทีโดยไม่ต้องจัดรูปแบบซ้ำ
+                </p>
+                <ul class="scene-highlights">
+                    <li>
+                        <div class="highlight-icon">📄</div>
+                        <span><strong>Official Layout:</strong> ฟอร์มตารางมาตรฐาน พร้อมส่วนลงนามผู้อนุมัติและผู้รายงาน</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon">⚡</div>
+                        <span><strong>Batch Execution:</strong> สร้างรายงาน 4 คันต่อเนื่องอัตโนมัติ ไม่ต้องกดทีละคัน</span>
+                    </li>
+                    <li>
+                        <div class="highlight-icon">☁️</div>
+                        <span><strong>Cloud Sync:</strong> ซิงค์ข้อมูลอัตโนมัติสู่ Google Sheets ป้องกันข้อมูลสูญหาย</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="scene-visual">
+                <div class="batch-engine-stage">
+                    <div class="pdf-cards-stack">
+                        <div class="pdf-sheet">
+                            <div class="sheet-line title"></div>
+                            <div class="sheet-line w80"></div>
+                            <div class="sheet-line w50"></div>
+                            <div class="sheet-line w90"></div>
+                        </div>
+                        <div class="pdf-sheet">
+                            <div class="sheet-line title"></div>
+                            <div class="sheet-line w80"></div>
+                            <div class="sheet-line w50"></div>
+                            <div class="sheet-line w90"></div>
+                        </div>
+                        <div class="pdf-sheet">
+                            <div class="sheet-line title"></div>
+                            <div class="sheet-line w80"></div>
+                            <div class="sheet-line w50"></div>
+                            <div class="sheet-line w90"></div>
+                        </div>
+                        <div class="pdf-sheet">
+                            <div class="sheet-line title"></div>
+                            <div class="sheet-line w80"></div>
+                            <div class="sheet-line w50"></div>
+                            <div class="sheet-line w90"></div>
+                        </div>
+                    </div>
+                    <div class="print-pulse-btn">
+                        <span>🖨️</span>
+                        <span>Generated Batch แบบ 4 (Ready to Print)</span>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+    </main>
+
+    <!-- Footer Master Spec -->
+    <footer class="storyboard-footer">
+        <div class="footer-logo">MOC PHETCHABURI</div>
+        <p class="footer-desc">
+            ระบบบันทึกการใช้รถราชการ (แบบ 4) สำนักงานพาณิชย์จังหวัดเพชรบุรี (กลุ่มยุทธศาสตร์และแผนงาน)<br>
+            ออกแบบตามมาตรฐานสถาปัตยกรรม Apple Design System · พัฒนาด้วยความประณีต 100%
+        </p>
+        <div class="footer-links">
+            <a href="/" class="pill-btn primary">📱 กลับสู่หน้าระบบหลัก</a>
+        </div>
+    </footer>
+
+    <script>
+        function scrollToScene(sceneId, tabElement) {
+            document.querySelectorAll('.scene-step-tab').forEach(t => t.classList.remove('active'));
+            if (tabElement) tabElement.classList.add('active');
+            
+            const target = document.getElementById(sceneId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        let isPlaying = false;
+        let playInterval = null;
+        let currentSceneIndex = 0;
+        const scenes = ['scene-1', 'scene-2', 'scene-3', 'scene-4'];
+
+        function autoPlayStoryboard() {
+            const btn = document.querySelector('.nav-controls .primary');
+            if (isPlaying) {
+                clearInterval(playInterval);
+                isPlaying = false;
+                btn.innerHTML = '▶ เล่นอนิเมชั่นพรีเซนต์';
+                return;
+            }
+
+            isPlaying = true;
+            btn.innerHTML = '⏸ หยุดพรีเซนต์';
+            currentSceneIndex = 0;
+            
+            const tabs = document.querySelectorAll('.scene-step-tab');
+            scrollToScene(scenes[currentSceneIndex], tabs[currentSceneIndex]);
+
+            playInterval = setInterval(() => {
+                currentSceneIndex = (currentSceneIndex + 1) % scenes.length;
+                scrollToScene(scenes[currentSceneIndex], tabs[currentSceneIndex]);
+            }, 4500);
+        }
+    </script>
+</body>
+</html>
