@@ -123,6 +123,12 @@ function renderDriversGrid() {
         container.appendChild(card);
     });
 
+    // Control visibility of Admin Settings button (Only Driver 1 / กฤษณพัฒน์ แสงหล้า can see)
+    const adminBtn = document.getElementById("btn-admin-settings");
+    if (adminBtn) {
+        adminBtn.style.display = (appState.selectedDriverId === 1) ? "flex" : "none";
+    }
+
     // Also populate edit trip driver select
     const editDriverSelect = document.getElementById("edit-trip-driver");
     if (editDriverSelect) {
@@ -143,6 +149,12 @@ function selectDriver(driverId) {
     }
     
     updateTopVehicleBanner();
+    
+    // Toggle Admin Settings button
+    const adminBtn = document.getElementById("btn-admin-settings");
+    if (adminBtn) {
+        adminBtn.style.display = (appState.selectedDriverId === 1) ? "flex" : "none";
+    }
     
     // Also sync dropdowns
     const departSelect = document.getElementById("depart-vehicle");
