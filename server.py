@@ -113,6 +113,16 @@ class SettingUpdate(BaseModel):
     default_approver: Optional[str] = "หัวหน้ากลุ่มยุทธศาสตร์ฯ"
     google_sheets_url: Optional[str] = None
 
+class VerifyPinRequest(BaseModel):
+    pin: str
+
+class ChangePinRequest(BaseModel):
+    current_pin: str
+    new_pin: str
+
+class ResetPinRequest(BaseModel):
+    master_pin: str
+
 # ----------------- APIs -----------------
 
 @app.get("/api/drivers")
@@ -835,6 +845,91 @@ def update_settings(settings: SettingUpdate):
     if settings.google_sheets_url is not None:
         set_setting_val("google_sheets_url", settings.google_sheets_url.strip())
     return {"status": "success"}
+
+# -------------------------------------------------------------
+# Auth & Security APIs (Moderator PIN & Master Key for พี่ป๋อ)
+# -------------------------------------------------------------
+@app.post("/api/auth/verify-pin")
+def verify_pin(req: VerifyPinRequest):
+    pin = req.pin.strip()
+    current_mod_pin = get_setting_val("mod_pin", "9999")
+    master_pin = get_setting_val("master_pin", "2424")
+    
+    if pin == "2424" or pin == master_pin:
+        return {
+            "success": True,
+            "role": "master",
+            "message": "ยินดีต้อนรับพี่ป๋อครับ (Master Control Access)",
+            "current_mod_pin": current_mod_pin,
+            "master_pin": "2424"
+        }
+    elif pin == current_mod_pin or (not current_mod_pin and pin == "9999"):
+        return {
+            "success": True,
+            "role": "moderator",
+            "message": "เข้าสู่ระบบโมเดอเรเตอร์สำเร็จ"
+        }
+    else:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "รหัส PIN ไม่ถูกต้อง โปรดตรวจสอบอีกครั้ง"}
+        )
+
+@app.post("/api/auth/change-pin")
+def change_pin(req: ChangePinRequest):
+    curr = req.current_pin.strip()
+    new_p = req.new_pin.strip()
+    
+    if not new_p or len(new_p) < 4:
+        raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 หลัก")
+    
+    current_mod_pin = get_setting_val("mod_pin", "9999")
+    master_pin = get_setting_val("master_pin", "2424")
+    
+    if curr != current_mod_pin and curr != "2424" and curr != master_pin:
+        raise HTTPException(status_code=401, detail="รหัสผ่านเดิมไม่ถูกต้อง")
+    
+    set_setting_val("mod_pin", new_p)
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    set_setting_val("mod_pin_updated_at", now_str)
+    
+    return {
+        "success": True,
+        "message": f"เปลี่ยนรหัสผ่านโมเดอเรเตอร์เป็น '{new_p}' เรียบร้อยแล้ว",
+        "new_pin": new_p,
+        "updated_at": now_str
+    }
+
+@app.get("/api/auth/mod-pin-status")
+def get_mod_pin_status(master_pin: str = ""):
+    server_master = get_setting_val("master_pin", "2424")
+    if master_pin.strip() != "2424" and master_pin.strip() != server_master:
+        raise HTTPException(status_code=403, detail="ต้องใช้ Master PIN ของพี่ป๋อเพื่อดูข้อมูลนี้")
+    
+    return {
+        "success": True,
+        "current_mod_pin": get_setting_val("mod_pin", "9999"),
+        "master_pin": "2424",
+        "updated_at": get_setting_val("mod_pin_updated_at", "ค่าเริ่มต้น (9999)")
+    }
+
+@app.post("/api/auth/reset-pin")
+def reset_pin(req: ResetPinRequest):
+    server_master = get_setting_val("master_pin", "2424")
+    if req.master_pin.strip() != "2424" and req.master_pin.strip() != server_master:
+        raise HTTPException(status_code=403, detail="ต้องใช้ Master PIN ของพี่ป๋อเพื่อรีเซ็ตรหัสผ่าน")
+    
+    set_setting_val("mod_pin", "9999")
+    now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    set_setting_val("mod_pin_updated_at", f"{now_str} (รีเซ็ตโดยพี่ป๋อ)")
+    
+    return {
+        "success": True,
+        "message": "รีเซ็ตรหัสผ่านโมเดอเรเตอร์กลับเป็น '9999' เรียบร้อยแล้ว",
+        "mod_pin": "9999",
+        "updated_at": now_str
+    }
+
 
 # Google Sheets Endpoints
 @app.post("/api/google/sync-all")

@@ -776,6 +776,31 @@ body {
   cursor: pointer;
 }
 
+.numpad-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 12px 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.numpad-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+.numpad-btn:active {
+  background: #cbd5e1;
+  transform: translateY(1px);
+}
+
 /* Form Styles */
 .form-group {
   margin-bottom: 16px;

@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.8.6">
+    <link rel="stylesheet" href="/css/style.css?v=2.9.0">
 </head>
 <body>
 
@@ -181,6 +181,14 @@
                     <button type="button" class="btn-submit" onclick="openMaintenanceModal()" style="background: linear-gradient(135deg, #059669, #047857); padding: 9px 14px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
                         <span style="font-size: 1.1rem;">🔧</span>
                         <span>แจ้งซ่อม / บันทึกเข้าศูนย์</span>
+                    </button>
+                    <button type="button" class="chip-btn" onclick="openPinManageModal()" style="background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); color: white; padding: 8px 12px; font-size: 0.88rem; display: flex; align-items: center; gap: 5px;">
+                        <span>🔑</span>
+                        <span id="btn-mod-pin-text">จัดการ PIN</span>
+                    </button>
+                    <button type="button" class="chip-btn" onclick="lockModeratorSession()" style="background: rgba(239, 68, 68, 0.25); border-color: rgba(239, 68, 68, 0.45); color: #fee2e2; padding: 8px 12px; font-size: 0.88rem; display: flex; align-items: center; gap: 5px;" title="ล็อคหน้าจอทันที">
+                        <span>🔒</span>
+                        <span>ล็อค</span>
                     </button>
                     <button type="button" class="chip-btn" onclick="loadModeratorData()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 9px 12px; font-size: 0.9rem;">
                         🔄 รีเฟรช
@@ -975,6 +983,104 @@
         </div>
     </div>
 
+    <!-- MODAL: PIN AUTHENTICATION (สำหรับเข้าหน้าโมเดอเรเตอร์) -->
+    <div class="modal-overlay" id="modal-mod-pin-auth">
+        <div class="modal-card" style="max-width: 380px; text-align: center; padding: 24px 20px;">
+            <div style="width: 54px; height: 54px; margin: 0 auto 10px; background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(30,58,138,0.2)); border: 1px solid rgba(37,99,235,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem;">
+                🔒
+            </div>
+            <h3 style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 4px;">ระบบความปลอดภัย</h3>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">กรุณากรอกรหัส PIN เพื่อเข้าสู่ศูนย์สั่งการ (โมเดอเรเตอร์)</p>
+            
+            <form id="form-mod-pin-auth" onsubmit="submitPinAuth(event)">
+                <div style="margin-bottom: 14px;">
+                    <input type="password" id="mod-pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" class="form-input" placeholder="••••" style="text-align: center; font-size: 1.8rem; letter-spacing: 10px; font-weight: 700; padding: 8px 12px; background: #f8fafc;" required autocomplete="off">
+                </div>
+
+                <div id="mod-pin-error" style="display: none; color: #ef4444; font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; background: #fef2f2; padding: 6px 10px; border-radius: 8px; border: 1px solid #fecaca;">
+                    รหัส PIN ไม่ถูกต้อง โปรดตรวจสอบอีกครั้ง
+                </div>
+
+                <!-- Quick Numpad Grid for Touch & Mobile -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 16px;">
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('1')">1</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('2')">2</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('3')">3</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('4')">4</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('5')">5</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('6')">6</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('7')">7</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('8')">8</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('9')">9</button>
+                    <button type="button" class="numpad-btn" style="color: #ef4444;" onclick="clearPinDigit()">C</button>
+                    <button type="button" class="numpad-btn" onclick="appendPinDigit('0')">0</button>
+                    <button type="button" class="numpad-btn" onclick="backspacePinDigit()">⌫</button>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn-cancel" style="flex: 1;" onclick="cancelPinAuth()">ยกเลิก</button>
+                    <button type="submit" class="btn-submit" style="flex: 1.4; background: linear-gradient(135deg, #2563eb, #1d4ed8);">🔓 ปลดล็อค</button>
+                </div>
+            </form>
+            <div style="margin-top: 12px; font-size: 0.78rem; color: #94a3b8;">
+                * มีระบบ Master PIN สำรอง ป้องกันการลืมรหัสผ่าน
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: PIN MANAGEMENT & MASTER VAULT -->
+    <div class="modal-overlay" id="modal-pin-manage">
+        <div class="modal-card" style="max-width: 440px;">
+            <div class="modal-header">
+                <h3 class="modal-title">🔑 จัดการรหัสผ่านความปลอดภัย (PIN)</h3>
+                <button type="button" class="modal-close" onclick="closePinManageModal()">✕</button>
+            </div>
+
+            <!-- Master Admin Vault Box (แสดงสิทธิ์ Master ของพี่ป๋อ) -->
+            <div id="master-pin-vault-box" style="margin-bottom: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #f59e0b; border-radius: 12px; padding: 12px 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <strong style="color: #92400e; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
+                        <span>👑</span> Master Vault (เฉพาะพี่ป๋อ)
+                    </strong>
+                    <span style="font-size: 0.78rem; background: #92400e; color: white; padding: 2px 7px; border-radius: 4px; font-weight: 600;">Master PIN: 2424</span>
+                </div>
+                <div style="font-size: 0.88rem; color: #78350f; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span>รหัส PIN ของโมเดอเรเตอร์ปัจจุบัน:</span>
+                    <strong id="vault-current-mod-pin" style="font-size: 1.15rem; color: #1e293b; background: white; padding: 2px 8px; border-radius: 4px; border: 1px solid #cbd5e1; letter-spacing: 2px;">9999</strong>
+                </div>
+                <div style="font-size: 0.76rem; color: #b45309;" id="vault-last-updated-text">
+                    อัปเดตล่าสุด: ค่าเริ่มต้น
+                </div>
+                <div style="margin-top: 8px;">
+                    <button type="button" class="chip-btn" onclick="resetModPinToDefault()" style="background: white; border-color: #f59e0b; color: #92400e; font-weight: 600; font-size: 0.8rem; width: 100%; justify-content: center; padding: 6px 8px;">
+                        🔄 รีเซ็ตรหัสโมกลับเป็น 9999 ทันที
+                    </button>
+                </div>
+            </div>
+
+            <!-- Change PIN Form -->
+            <form id="form-change-pin" onsubmit="submitChangePin(event)">
+                <div class="form-group">
+                    <label class="form-label">รหัสผ่านปัจจุบัน (หรือใช้ Master PIN 2424)</label>
+                    <input type="password" id="change-pin-curr" class="form-input" placeholder="ใส่รหัสปัจจุบัน" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">รหัสผ่าน PIN ใหม่ (4-6 หลัก)</label>
+                    <input type="password" id="change-pin-new" maxlength="6" inputmode="numeric" class="form-input" placeholder="เช่น 9999 หรือ 1234" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ยืนยันรหัสผ่าน PIN ใหม่อีกครั้ง</label>
+                    <input type="password" id="change-pin-confirm" maxlength="6" inputmode="numeric" class="form-input" placeholder="พิมพ์ซ้ำอีกครั้ง" required autocomplete="off">
+                </div>
+
+                <div class="modal-actions" style="margin-top: 18px;">
+                    <button type="button" class="btn-cancel" onclick="closePinManageModal()">ปิด</button>
+                    <button type="submit" class="btn-submit" style="background: #10b981;">💾 บันทึกรหัสผ่านใหม่</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ------------------------------------------------------------- -->
     <!-- 5. TEMPLATE เอกสารราชการ: บันทึกการใช้รถราชการ (แบบ 4) สำหรับสั่งพิมพ์ -->
     <!-- ------------------------------------------------------------- -->
@@ -1054,6 +1160,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.8.6"></script>
+    <script src="/js/app.js?v=2.9.0"></script>
 </body>
 </html>

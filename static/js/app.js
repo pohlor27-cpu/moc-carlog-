@@ -1781,40 +1781,269 @@ async function syncOfflineQueue() {
 }
 
 // ==========================================================================
-// MODERATOR COMMAND CENTER & DASHBOARD (สำหรับเจ้าหน้าที่โม)
+// AUTHENTICATION & SECURITY (สำหรับล็อคหน้าโมเดอเรเตอร์ & MASTER KEY พี่ป๋อ)
 // ==========================================================================
 
-let currentModeratorData = null;
-let currentModeratorMonth = "";
+function checkModeratorAuth() {
+    return sessionStorage.getItem("moc_mod_auth") === "true";
+}
 
 function switchTab(tabName) {
-    const driverBtn = document.getElementById("tab-driver-btn");
-    const modBtn = document.getElementById("tab-moderator-btn");
-    const driverView = document.getElementById("view-driver");
-    const modView = document.getElementById("view-moderator");
-
     if (tabName === 'moderator') {
-        if (driverBtn) driverBtn.classList.remove("active");
-        if (modBtn) modBtn.classList.add("active");
-        if (driverView) driverView.style.display = "none";
-        if (modView) modView.style.display = "block";
-
-        // Initialize default month if empty
-        const modMonthInput = document.getElementById("moderator-month");
-        if (modMonthInput && !modMonthInput.value) {
-            const now = new Date();
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            modMonthInput.value = `${y}-${m}`;
+        if (!checkModeratorAuth()) {
+            openPinAuthModal();
+            return;
         }
-        loadModeratorData();
+        actuallyOpenModeratorView();
     } else {
+        const driverBtn = document.getElementById("tab-driver-btn");
+        const modBtn = document.getElementById("tab-moderator-btn");
+        const driverView = document.getElementById("view-driver");
+        const modView = document.getElementById("view-moderator");
+
         if (modBtn) modBtn.classList.remove("active");
         if (driverBtn) driverBtn.classList.add("active");
         if (modView) modView.style.display = "none";
         if (driverView) driverView.style.display = "block";
     }
 }
+
+function actuallyOpenModeratorView() {
+    const driverBtn = document.getElementById("tab-driver-btn");
+    const modBtn = document.getElementById("tab-moderator-btn");
+    const driverView = document.getElementById("view-driver");
+    const modView = document.getElementById("view-moderator");
+
+    if (driverBtn) driverBtn.classList.remove("active");
+    if (modBtn) modBtn.classList.add("active");
+    if (driverView) driverView.style.display = "none";
+    if (modView) modView.style.display = "block";
+
+    // Update Role Badge / Master indicator
+    updateModAuthUI();
+
+    // Initialize default month if empty
+    const modMonthInput = document.getElementById("moderator-month");
+    if (modMonthInput && !modMonthInput.value) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        modMonthInput.value = `${y}-${m}`;
+    }
+    loadModeratorData();
+}
+
+function updateModAuthUI() {
+    const role = sessionStorage.getItem("moc_mod_role") || "moderator";
+    const btnPinText = document.getElementById("btn-mod-pin-text");
+    if (btnPinText) {
+        btnPinText.textContent = role === "master" ? "👑 Master Vault" : "🔑 จัดการ PIN";
+    }
+}
+
+function openPinAuthModal() {
+    const modal = document.getElementById("modal-mod-pin-auth");
+    if (!modal) return;
+    const pinInput = document.getElementById("mod-pin-input");
+    const errEl = document.getElementById("mod-pin-error");
+    if (pinInput) pinInput.value = "";
+    if (errEl) errEl.style.display = "none";
+    modal.classList.add("open");
+    setTimeout(() => {
+        if (pinInput) pinInput.focus();
+    }, 150);
+}
+
+function cancelPinAuth() {
+    const modal = document.getElementById("modal-mod-pin-auth");
+    if (modal) modal.classList.remove("open");
+    switchTab('driver');
+}
+
+function appendPinDigit(digit) {
+    const pinInput = document.getElementById("mod-pin-input");
+    if (!pinInput) return;
+    if (pinInput.value.length < 6) {
+        pinInput.value += digit;
+        // Auto submit if 4 digits entered
+        if (pinInput.value.length === 4) {
+            submitPinAuth();
+        }
+    }
+}
+
+function clearPinDigit() {
+    const pinInput = document.getElementById("mod-pin-input");
+    if (pinInput) pinInput.value = "";
+    const errEl = document.getElementById("mod-pin-error");
+    if (errEl) errEl.style.display = "none";
+}
+
+function backspacePinDigit() {
+    const pinInput = document.getElementById("mod-pin-input");
+    if (pinInput && pinInput.value.length > 0) {
+        pinInput.value = pinInput.value.slice(0, -1);
+    }
+}
+
+async function submitPinAuth(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const pinInput = document.getElementById("mod-pin-input");
+    const errEl = document.getElementById("mod-pin-error");
+    if (!pinInput) return;
+    const pin = pinInput.value.trim();
+
+    if (!pin) {
+        if (errEl) {
+            errEl.textContent = "กรุณากรอกรหัส PIN";
+            errEl.style.display = "block";
+        }
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/auth/verify-pin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            sessionStorage.setItem("moc_mod_auth", "true");
+            sessionStorage.setItem("moc_mod_role", data.role || "moderator");
+            const modal = document.getElementById("modal-mod-pin-auth");
+            if (modal) modal.classList.remove("open");
+            actuallyOpenModeratorView();
+        } else {
+            if (errEl) {
+                errEl.textContent = data.message || "รหัส PIN ไม่ถูกต้อง โปรดตรวจสอบอีกครั้ง";
+                errEl.style.display = "block";
+            }
+            pinInput.value = "";
+            pinInput.focus();
+        }
+    } catch (err) {
+        if (errEl) {
+            errEl.textContent = "เกิดข้อผิดพลาดในการตรวจสอบรหัสผ่าน: " + err.message;
+            errEl.style.display = "block";
+        }
+    }
+}
+
+function lockModeratorSession() {
+    sessionStorage.removeItem("moc_mod_auth");
+    sessionStorage.removeItem("moc_mod_role");
+    switchTab('driver');
+}
+
+async function openPinManageModal() {
+    const modal = document.getElementById("modal-pin-manage");
+    if (!modal) return;
+
+    const role = sessionStorage.getItem("moc_mod_role") || "moderator";
+    const vaultBox = document.getElementById("master-pin-vault-box");
+
+    if (role === "master") {
+        if (vaultBox) vaultBox.style.display = "block";
+        try {
+            const res = await fetch("/api/auth/mod-pin-status?master_pin=2424");
+            if (res.ok) {
+                const d = await res.json();
+                const pinEl = document.getElementById("vault-current-mod-pin");
+                const updEl = document.getElementById("vault-last-updated-text");
+                if (pinEl) pinEl.textContent = d.current_mod_pin || "9999";
+                if (updEl) updEl.textContent = "อัปเดตล่าสุด: " + (d.updated_at || "ค่าเริ่มต้น");
+            }
+        } catch (e) {
+            console.warn("Could not load vault status:", e);
+        }
+    } else {
+        if (vaultBox) vaultBox.style.display = "none";
+    }
+
+    const currInput = document.getElementById("change-pin-curr");
+    const newInput = document.getElementById("change-pin-new");
+    const confInput = document.getElementById("change-pin-confirm");
+    if (currInput) currInput.value = "";
+    if (newInput) newInput.value = "";
+    if (confInput) confInput.value = "";
+
+    modal.classList.add("open");
+}
+
+function closePinManageModal() {
+    const modal = document.getElementById("modal-pin-manage");
+    if (modal) modal.classList.remove("open");
+}
+
+async function submitChangePin(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const curr = document.getElementById("change-pin-curr").value.trim();
+    const newP = document.getElementById("change-pin-new").value.trim();
+    const conf = document.getElementById("change-pin-confirm").value.trim();
+
+    if (!curr || !newP || !conf) {
+        alert("กรุณากรอกข้อมูลให้ครบทุกช่อง");
+        return;
+    }
+    if (newP !== conf) {
+        alert("รหัสผ่านใหม่และการยืนยันไม่ตรงกัน");
+        return;
+    }
+    if (newP.length < 4) {
+        alert("รหัสผ่านใหม่ต้องมีอย่างน้อย 4 หลัก");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/auth/change-pin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ current_pin: curr, new_pin: newP })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert("✅ " + data.message);
+            closePinManageModal();
+        } else {
+            alert("❌ " + (data.detail || data.message || "ไม่สามารถเปลี่ยนรหัสได้"));
+        }
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    }
+}
+
+async function resetModPinToDefault() {
+    if (!confirm("ต้องการรีเซ็ตรหัส PIN ของโมเดอเรเตอร์กลับเป็น '9999' หรือไม่?")) {
+        return;
+    }
+    try {
+        const res = await fetch("/api/auth/reset-pin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ master_pin: "2424" })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert("✅ " + data.message);
+            const pinEl = document.getElementById("vault-current-mod-pin");
+            const updEl = document.getElementById("vault-last-updated-text");
+            if (pinEl) pinEl.textContent = "9999";
+            if (updEl) updEl.textContent = "อัปเดตล่าสุด: " + data.updated_at;
+        } else {
+            alert("❌ " + (data.detail || "ไม่สามารถรีเซ็ตได้"));
+        }
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    }
+}
+
+// ==========================================================================
+// MODERATOR COMMAND CENTER & DASHBOARD (สำหรับเจ้าหน้าที่โม)
+// ==========================================================================
+
+let currentModeratorData = null;
+let currentModeratorMonth = "";
 
 async function loadModeratorData() {
     try {
