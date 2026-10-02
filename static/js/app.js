@@ -1111,6 +1111,16 @@ async function generateForm4Print() {
     try {
         const data = await fetchForm4Data();
         populateForm4DOM(data);
+        
+        // Explicitly inject landscape page orientation for browser print dialog
+        let printStyle = document.getElementById("force-landscape-style");
+        if (!printStyle) {
+            printStyle = document.createElement("style");
+            printStyle.id = "force-landscape-style";
+            printStyle.innerHTML = "@page { size: A4 landscape !important; size: landscape !important; margin: 6mm 8mm !important; }";
+            document.head.appendChild(printStyle);
+        }
+
         window.print();
     } catch (e) {
         alert("ไม่สามารถสั่งพิมพ์ได้: " + e.message);

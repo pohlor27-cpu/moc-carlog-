@@ -818,15 +818,31 @@ body {
   line-height: 1.35;
 }
 
+/* Page Orientation Default: A4 Landscape */
+@page {
+  size: A4 landscape;
+  size: landscape;
+  margin: 6mm 8mm;
+}
+
 /* Print Only media query (A4 LANDSCAPE แนวนอน 100% เต็มแผ่น) */
 @media print {
-  body {
+  @page {
+    size: A4 landscape;
+    size: landscape;
+    margin: 6mm 8mm;
+  }
+  html, body {
+    width: 100% !important;
+    height: auto !important;
     background: white !important;
     padding: 0 !important;
     margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   .navbar, .driver-select-section, .action-banner, .active-trips-card, 
-  .history-section, .modal-overlay, #btn-print-action, .no-print {
+  .history-section, .modal-overlay, #btn-print-action, .no-print, #offline-queue-badge {
     display: none !important;
   }
   .print-form-container {
@@ -850,10 +866,6 @@ body {
   .form4-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
-  }
-  @page {
-    size: A4 landscape;
-    margin: 6mm 8mm;
   }
 }
 
