@@ -1175,9 +1175,9 @@ body {
 /* Print Only media query (A4 LANDSCAPE แนวนอน 100% เต็มแผ่น) */
 @media print {
   @page {
-    size: A4 landscape;
-    size: landscape;
-    margin: 6mm 8mm;
+    size: A4 landscape !important;
+    size: landscape !important;
+    margin: 6mm 8mm !important;
   }
   html, body {
     width: 100% !important;
@@ -1205,6 +1205,8 @@ body {
     box-shadow: none !important;
     page-break-after: always !important;
     break-after: page !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
     min-height: 180mm !important;
     display: flex !important;
     flex-direction: column !important;
@@ -1213,6 +1215,57 @@ body {
   .form4-page:last-child {
     page-break-after: auto !important;
     break-after: auto !important;
+  }
+  .form4-top-bar {
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr !important;
+    align-items: center !important;
+    margin-bottom: 2px !important;
+  }
+  .form4-logo-container {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  .form4-logo-img {
+    width: 52px !important;
+    height: 52px !important;
+    object-fit: contain !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .form4-header-top {
+    display: flex !important;
+    justify-content: flex-end !important;
+    font-size: 13pt !important;
+    font-weight: bold !important;
+  }
+  .form4-title-row {
+    text-align: center !important;
+    font-size: 17pt !important;
+    font-weight: bold !important;
+    margin-bottom: 6px !important;
+  }
+  .form4-meta-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    font-size: 12.5pt !important;
+    margin-bottom: 6px !important;
+  }
+  .form4-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 11pt !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .form4-table thead {
+    display: table-header-group !important;
+  }
+  .form4-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 
