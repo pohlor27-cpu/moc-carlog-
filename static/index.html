@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.9.0">
+    <link rel="stylesheet" href="/css/style.css?v=2.9.1">
 </head>
 <body>
 
@@ -24,7 +24,7 @@
             <div class="nav-tabs">
                 <button class="nav-tab-btn active" id="tab-driver-btn" onclick="switchTab('driver')">📱 หน้าหลัก (ผขร.)</button>
                 <button class="nav-tab-btn" id="tab-moderator-btn" onclick="switchTab('moderator')">👩‍💼 แดชบอร์ดเจ้าหน้าที่ (โม)</button>
-                <button class="nav-tab-btn" id="btn-admin-settings" onclick="openSettingsModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                <button class="nav-tab-btn" id="btn-admin-settings" onclick="openSettingsModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04); color: var(--ink); border: 1px solid rgba(0,0,0,0.06);">
                     <span>⚙️</span>
                     <span>เชื่อมต่อ Google Drive</span>
                 </button>
@@ -39,26 +39,26 @@
         <!-- ========================================== -->
         <div id="view-driver">
 
-            <!-- Active Vehicle Focus Banner -->
-            <section style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 20px; box-shadow: var(--shadow-md); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;">
+            <!-- Active Vehicle Focus Banner (Apple Dark Surface Tile) -->
+            <section style="background: var(--surface-tile-1); color: #ffffff; border-radius: var(--radius-lg); padding: 22px 26px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.18);">
                 <div>
-                    <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">รถยนต์ประจำพนักงานขับรถ</div>
-                    <div id="top-car-plate" style="font-size: 1.5rem; font-weight: 700; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
+                    <div style="font-size: 0.8rem; color: var(--body-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;">รถยนต์ประจำพนักงานขับรถ</div>
+                    <div id="top-car-plate" style="font-size: 1.55rem; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em; margin-top: 2px;">
                         <span>🚙</span> ขก 225 นนทบุรี
                     </div>
-                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
-                        ผู้ขับขี่: <strong id="top-driver-name" style="color: #fde047;">กฤษณพัฒน์ แสงหล้า</strong> | สิ้นเดือน: <strong>กันยายน 2569</strong>
+                    <div style="font-size: 0.88rem; color: var(--body-muted); margin-top: 4px;">
+                        ผู้ขับขี่: <strong id="top-driver-name" style="color: #ffffff; font-weight: 600;">กฤษณพัฒน์ แสงหล้า</strong> | สิ้นเดือน: <span style="color: #cbd5e1;">กันยายน 2569</span>
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="text-align: right; background: rgba(255,255,255,0.08); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12);">
-                        <div style="font-size: 0.75rem; color: #94a3b8;">เลขไมล์เริ่มต้น/ปัจจุบัน</div>
-                        <div id="top-car-mileage" style="font-size: 1.6rem; font-weight: 800; color: #34d399; font-family: monospace;">52,204</div>
-                        <div style="font-size: 0.75rem; color: #94a3b8;">กิโลเมตร (กม.)</div>
+                    <div style="text-align: right; background: rgba(255,255,255,0.06); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size: 0.75rem; color: var(--body-muted);">เลขไมล์ปัจจุบัน</div>
+                        <div id="top-car-mileage" style="font-size: 1.65rem; font-weight: 700; color: #30d158; font-family: -apple-system, BlinkMacSystemFont, monospace;">52,204</div>
+                        <div style="font-size: 0.75rem; color: var(--body-muted);">กิโลเมตร (กม.)</div>
                     </div>
-                    <button type="button" onclick="openEditMileageModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 10px 14px; border-radius: var(--radius-md); font-family: 'Prompt', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <button type="button" onclick="openEditMileageModal()" class="chip-btn" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); color: #ffffff; padding: 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
                         <span style="font-size: 1.2rem;">⚙️</span>
-                        <span>แก้ไขไมล์</span>
+                        <span style="font-size: 0.82rem; font-weight: 500;">แก้ไขไมล์</span>
                     </button>
                 </div>
             </section>
@@ -1160,6 +1160,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.9.0"></script>
+    <script src="/js/app.js?v=2.9.1"></script>
 </body>
 </html>
