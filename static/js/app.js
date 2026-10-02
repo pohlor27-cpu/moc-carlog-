@@ -1720,3 +1720,527 @@ async function syncOfflineQueue() {
         alert(`✅ อัปโหลดข้อมูลที่บันทึกไว้ในโหมดออฟไลน์ขึ้นระบบเรียบร้อยแล้วครับ! (จำนวน ${syncedCount} รายการ)\n\n* ข้อมูลชั่วคราวถูกลบออกจากเครื่องเรียบร้อยแล้วครับ`);
     }
 }
+
+// ==========================================================================
+// MODERATOR COMMAND CENTER & DASHBOARD (สำหรับเจ้าหน้าที่โม)
+// ==========================================================================
+
+let currentModeratorData = null;
+let currentModeratorMonth = "";
+
+function switchTab(tabName) {
+    const driverBtn = document.getElementById("tab-driver-btn");
+    const modBtn = document.getElementById("tab-moderator-btn");
+    const driverView = document.getElementById("view-driver");
+    const modView = document.getElementById("view-moderator");
+
+    if (tabName === 'moderator') {
+        if (driverBtn) driverBtn.classList.remove("active");
+        if (modBtn) modBtn.classList.add("active");
+        if (driverView) driverView.style.display = "none";
+        if (modView) modView.style.display = "block";
+
+        // Initialize default month if empty
+        const modMonthInput = document.getElementById("moderator-month");
+        if (modMonthInput && !modMonthInput.value) {
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            modMonthInput.value = `${y}-${m}`;
+        }
+        loadModeratorData();
+    } else {
+        if (modBtn) modBtn.classList.remove("active");
+        if (driverBtn) driverBtn.classList.add("active");
+        if (modView) modView.style.display = "none";
+        if (driverView) driverView.style.display = "block";
+    }
+}
+
+async function loadModeratorData() {
+    try {
+        const modMonthInput = document.getElementById("moderator-month");
+        let month = modMonthInput ? modMonthInput.value : "";
+        if (!month) {
+            const now = new Date();
+            month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        currentModeratorMonth = month;
+
+        const res = await fetch(`/api/moderator/overview?month=${month}`);
+        if (!res.ok) throw new Error("ไม่สามารถโหลดข้อมูลแดชบอร์ดได้");
+        const data = await res.json();
+        currentModeratorData = data;
+
+        // 1. Update Metrics
+        const sum = data.summary || {};
+        const distEl = document.getElementById("metric-total-distance");
+        const fuelEl = document.getElementById("metric-total-fuel");
+        const tripsEl = document.getElementById("metric-total-trips");
+        const adhocEl = document.getElementById("metric-adhoc-trips");
+
+        if (distEl) distEl.innerHTML = `${(sum.total_distance_km || 0).toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">กม.</span>`;
+        if (fuelEl) fuelEl.innerHTML = `${(sum.total_fuel_liters || 0).toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">ลิตร</span>`;
+        if (tripsEl) tripsEl.innerHTML = `${(sum.total_trips || 0).toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">เที่ยว</span>`;
+        if (adhocEl) adhocEl.innerHTML = `${(sum.ad_hoc_trips || 0).toLocaleString()} <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">เที่ยว</span>`;
+
+        // 2. Render Bento Fleet Grid (4 Cars)
+        renderModeratorBento(data.vehicles || [], data.vehicle_stats || []);
+
+        // 3. Render Apple Fitness 3D Donut Activity Rings
+        renderModeratorRings(data.vehicle_stats || [], sum);
+
+        // 4. Render Trips Cross-Check Table
+        renderModeratorTrips(data.recent_trips || []);
+
+    } catch (e) {
+        console.error("Error loading moderator data:", e);
+    }
+}
+
+function renderModeratorBento(vehicles, vehicleStats) {
+    const container = document.getElementById("moderator-bento-fleet");
+    if (!container) return;
+
+    if (!vehicles || vehicles.length === 0) {
+        container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 20px;">ไม่พบข้อมูลรถยนต์</div>`;
+        return;
+    }
+
+    const ringColors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+
+    let html = "";
+    vehicles.forEach((v, index) => {
+        const color = ringColors[index % ringColors.length];
+        const isOnMission = (v.status === 'on_mission' && v.active_trip);
+        const act = v.active_trip || {};
+
+        // Oil Status & Progress calculation
+        const currMileage = v.current_mileage || 0;
+        const targetMileage = v.oil_target_km || (currMileage + 10000);
+        const remMileage = v.oil_remaining_km || Math.max(0, targetMileage - currMileage);
+        
+        let oilPercent = Math.min(100, Math.max(0, Math.round(((10000 - remMileage) / 10000) * 100)));
+        let oilStatusBadge = "";
+        let oilBarClass = "oil-bar-ok";
+
+        if (v.oil_status === 'overdue') {
+            oilStatusBadge = `<span style="color: #ef4444; font-weight: 700; font-size: 0.78rem;">🔴 เกินกำหนดแล้ว (${remMileage} กม.)</span>`;
+            oilBarClass = "oil-bar-danger";
+            oilPercent = 100;
+        } else if (v.oil_status === 'warning') {
+            oilStatusBadge = `<span style="color: #d97706; font-weight: 700; font-size: 0.78rem;">🟡 ใกล้ถึงกำหนด (เหลือ ${remMileage.toLocaleString()} กม.)</span>`;
+            oilBarClass = "oil-bar-warning";
+        } else {
+            oilStatusBadge = `<span style="color: #10b981; font-weight: 600; font-size: 0.78rem;">🟢 ปกติ (อีก ${remMileage.toLocaleString()} กม.)</span>`;
+            oilBarClass = "oil-bar-ok";
+        }
+
+        html += `
+            <div class="bento-card ${isOnMission ? 'active-mission' : ''}">
+                <div>
+                    <!-- Card Top Header -->
+                    <div class="bento-header">
+                        <div class="bento-plate-box">
+                            <div style="width: 12px; height: 12px; border-radius: 4px; background: ${color}; flex-shrink: 0;"></div>
+                            <div>
+                                <div class="bento-plate-title">${escapeHtml(v.license_plate)}</div>
+                                <div class="bento-driver-sub">ผขร.ประจำ: <strong>${escapeHtml(v.primary_driver_name || '-')}</strong></div>
+                            </div>
+                        </div>
+                        <div>
+                            ${isOnMission ? 
+                                `<span class="bento-status-pill pill-mission">🟡 กำลังเดินทาง</span>` : 
+                                `<span class="bento-status-pill pill-available">🟢 จอดพร้อมใช้</span>`
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Current Mileage Box -->
+                    <div class="bento-mileage-row">
+                        <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">เลขไมล์ปัจจุบัน:</span>
+                        <div class="bento-mileage-num">${(currMileage).toLocaleString()} <span style="font-size: 0.82rem; font-weight: normal; color: #64748b;">กม.</span></div>
+                    </div>
+
+                    <!-- Live Mission Banner if on mission -->
+                    ${isOnMission ? `
+                        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px; font-size: 0.85rem;">
+                            <div style="font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                <span>📍</span> ไป: ${escapeHtml(act.destination || '-')}
+                            </div>
+                            <div style="color: #78350f; font-size: 0.8rem; line-height: 1.4;">
+                                ผขร.: <strong>${escapeHtml(act.driver_name || '-')}</strong><br>
+                                ออกเวลา: <strong>${escapeHtml(act.depart_time || '-')} น.</strong> | วันที่: ${escapeHtml(act.depart_date || '-')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Oil Change Tracker Meter -->
+                    <div class="oil-meter-box">
+                        <div class="oil-meter-header">
+                            <span style="color: #475569; display: flex; align-items: center; gap: 4px;">
+                                <span>🛢️</span> ถ่ายน้ำมันเครื่อง
+                            </span>
+                            ${oilStatusBadge}
+                        </div>
+                        <div class="oil-bar-bg">
+                            <div class="oil-bar-fill ${oilBarClass}" style="width: ${oilPercent}%;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.74rem; color: #94a3b8; margin-top: 4px;">
+                            <span>เป้าหมายเปลี่ยนที่: ${(targetMileage).toLocaleString()} กม.</span>
+                            <span>(ป้ายคอพวงมาลัย)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
+                    <button type="button" class="chip-btn" onclick="printSingleVehicleForm4(${v.id})" style="background: #f8fafc; border-color: #cbd5e1; color: #1e293b; font-weight: 600; justify-content: center; padding: 7px 4px; font-size: 0.82rem;">
+                        🖨️ พิมพ์แบบ 4
+                    </button>
+                    <button type="button" class="chip-btn" onclick="openMaintenanceModal(${v.id})" style="background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; font-weight: 600; justify-content: center; padding: 7px 4px; font-size: 0.82rem;">
+                        🔧 ถ่ายน้ำมัน/ซ่อม
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function renderModeratorRings(vehicleStats, summary) {
+    const container = document.getElementById("moderator-rings-container");
+    const legend = document.getElementById("moderator-rings-legend");
+    if (!container || !legend) return;
+
+    const ringColors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+    const totalDist = summary.total_distance_km || 1; // avoid / 0
+
+    // Concentric Ring Radii
+    const radii = [90, 72, 54, 36];
+    const strokeWidth = 12;
+    const center = 110;
+
+    let svgCirclesBg = "";
+    let svgCirclesFill = "";
+    let legendHtml = "";
+
+    vehicleStats.forEach((vs, idx) => {
+        const color = ringColors[idx % ringColors.length];
+        const r = radii[idx] || (36 - idx * 10);
+        const circumference = 2 * Math.PI * r;
+        const vDist = vs.distance_km || 0;
+        const percent = Math.min(1, vDist / totalDist);
+        const offset = circumference * (1 - percent);
+
+        // Background Track
+        svgCirclesBg += `
+            <circle class="ring-circle-bg" cx="${center}" cy="${center}" r="${r}" stroke-width="${strokeWidth}" />
+        `;
+
+        // Filled Glowing Ring
+        svgCirclesFill += `
+            <circle class="ring-circle-fill" cx="${center}" cy="${center}" r="${r}" 
+                stroke="${color}" stroke-width="${strokeWidth}" 
+                stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                transform="rotate(-90 ${center} ${center})" />
+        `;
+
+        legendHtml += `
+            <div class="ring-legend-item">
+                <div class="ring-legend-dot" style="background: ${color};"></div>
+                <div style="line-height: 1.2;">
+                    <strong style="color: white; font-size: 0.82rem;">${escapeHtml(vs.license_plate)}</strong>
+                    <div style="font-size: 0.74rem; color: #94a3b8;">${vDist.toLocaleString()} กม. (${Math.round(percent * 100)}%)</div>
+                </div>
+            </div>
+        `;
+    });
+
+    const svgHtml = `
+        <svg width="220" height="220" viewBox="0 0 220 220">
+            ${svgCirclesBg}
+            ${svgCirclesFill}
+            <text x="${center}" y="${center - 6}" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="'Prompt', sans-serif">ระยะทางรวม</text>
+            <text x="${center}" y="${center + 16}" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="bold" font-family="'Prompt', sans-serif">${(summary.total_distance_km || 0).toLocaleString()} <tspan font-size="10" font-weight="normal">กม.</tspan></text>
+        </svg>
+    `;
+
+    container.innerHTML = svgHtml;
+    legend.innerHTML = legendHtml;
+}
+
+function renderModeratorTrips(trips) {
+    const tbody = document.getElementById("moderator-trips-table-body");
+    if (!tbody) return;
+
+    if (!trips || trips.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px; color: #94a3b8;">ไม่พบรายการเดินทางในเดือนนี้</td></tr>`;
+        return;
+    }
+
+    let html = "";
+    trips.forEach(t => {
+        const isCompleted = (t.status === 'completed');
+        const isAdHoc = (t.driver_id !== t.primary_driver_id);
+        const dist = t.distance_km || 0;
+        const fuel = t.fuel_liters || 0;
+
+        html += `
+            <tr id="mod-trip-row-${t.id}">
+                <td style="font-weight: 600; color: #1e293b; font-size: 0.88rem;">${escapeHtml(t.depart_date || '-')}</td>
+                <td style="font-weight: 700; color: #2563eb; font-size: 0.88rem;">${escapeHtml(t.license_plate || '-')}</td>
+                <td>
+                    <div style="font-weight: 600; color: #1e293b;">${escapeHtml(t.driver_name || '-')}</div>
+                    ${isAdHoc ? '<span style="font-size: 0.72rem; background: #fef3c7; color: #b45309; padding: 2px 6px; border-radius: 4px; font-weight: 700;">(ผู้ขับขี่เฉพาะกิจ)</span>' : ''}
+                </td>
+                <td style="font-weight: 600; color: #0f172a; max-width: 220px;">
+                    ${escapeHtml(t.destination || '-')}
+                </td>
+                <td style="color: #475569; font-size: 0.85rem;">${escapeHtml(t.approver || '-')}</td>
+                <td style="font-size: 0.85rem; color: #334155;">
+                    ออก: <strong>${escapeHtml(t.depart_time || '-')}</strong><br>
+                    กลับ: <strong>${isCompleted ? escapeHtml(t.arrive_time || '-') : '<span style="color:#d97706;">(กำลังวิ่ง)</span>'}</strong>
+                </td>
+                <td style="font-weight: 700; color: #10b981; font-family: monospace; font-size: 0.95rem;">
+                    ${isCompleted ? `${dist.toLocaleString()} กม.` : '-'}
+                </td>
+                <td style="font-size: 0.85rem;">
+                    ${fuel > 0 ? `<strong style="color: #059669;">${fuel} ลิตร</strong>` : '-'}
+                </td>
+                <td>
+                    ${isCompleted ? 
+                        `<span style="background: #dcfce7; color: #15803d; font-size: 0.76rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;">🟢 ครบถ้วน</span>` : 
+                        `<span style="background: #fef3c7; color: #b45309; font-size: 0.76rem; font-weight: 700; padding: 3px 8px; border-radius: 999px;">🟡 รอลงขากลับ</span>`
+                    }
+                </td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button type="button" class="chip-btn" onclick="openEditTripModal(${t.id})" style="padding: 4px 8px; font-size: 0.8rem; background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;">
+                        ✏️ แก้ไข
+                    </button>
+                    <button type="button" class="chip-btn" onclick="deleteTrip(${t.id})" style="padding: 4px 8px; font-size: 0.8rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;">
+                        🗑️ ลบ
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+function filterModeratorTrips() {
+    if (!currentModeratorData || !currentModeratorData.recent_trips) return;
+    const query = (document.getElementById("moderator-search-input")?.value || "").toLowerCase().trim();
+    const vFilter = document.getElementById("moderator-filter-vehicle")?.value || "";
+
+    const filtered = currentModeratorData.recent_trips.filter(t => {
+        if (vFilter && String(t.vehicle_id) !== String(vFilter)) {
+            return false;
+        }
+        if (!query) return true;
+        const text = `${t.depart_date} ${t.license_plate} ${t.driver_name} ${t.destination} ${t.approver}`.toLowerCase();
+        return text.includes(query);
+    });
+
+    renderModeratorTrips(filtered);
+}
+
+// 1-Click Batch Print All 4 Vehicles Form 4
+async function generateBatchForm4Print() {
+    try {
+        const modMonthInput = document.getElementById("moderator-month");
+        let month = modMonthInput ? modMonthInput.value : "";
+        if (!month) {
+            const now = new Date();
+            month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        const printArea = document.getElementById("print-area");
+        if (!printArea) return;
+
+        printArea.innerHTML = `<div style="text-align:center; padding: 40px; font-size: 1.2rem;">กำลังรวบรวมข้อมูลแบบ 4 ของรถยนต์ทั้ง 4 คัน ประจำเดือน ${month}...</div>`;
+
+        const vehicleIds = [1, 2, 3, 4];
+        let combinedHtml = "";
+        let successCount = 0;
+
+        for (const vid of vehicleIds) {
+            try {
+                const res = await fetch(`/api/report/form4?vehicle_id=${vid}&month=${month}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const trips = data.trips || [];
+                    const ROWS_PER_PAGE = 10;
+                    const totalPages = Math.max(1, Math.ceil(trips.length / ROWS_PER_PAGE));
+
+                    for (let p = 0; p < totalPages; p++) {
+                        const chunk = trips.slice(p * ROWS_PER_PAGE, (p + 1) * ROWS_PER_PAGE);
+                        while (chunk.length < ROWS_PER_PAGE) {
+                            chunk.push({});
+                        }
+                        const isLast = (p === totalPages - 1);
+                        combinedHtml += generateForm4PageHtml(chunk, p + 1, totalPages, data, isLast);
+                    }
+                    successCount++;
+                }
+            } catch (err) {
+                console.warn(`Could not load vehicle ${vid} Form 4:`, err);
+            }
+        }
+
+        if (successCount === 0 || !combinedHtml) {
+            alert("ไม่สามารถสร้างเอกสารแบบ 4 ได้ โปรดตรวจสอบข้อมูล");
+            return;
+        }
+
+        printArea.innerHTML = combinedHtml;
+
+        // Force Landscape print style
+        let printStyle = document.getElementById("force-landscape-style");
+        if (!printStyle) {
+            printStyle = document.createElement("style");
+            printStyle.id = "force-landscape-style";
+            printStyle.innerHTML = "@page { size: A4 landscape !important; size: landscape !important; margin: 6mm 8mm !important; }";
+            document.head.appendChild(printStyle);
+        }
+
+        setTimeout(() => {
+            window.print();
+        }, 300);
+
+    } catch (e) {
+        alert("เกิดข้อผิดพลาดในการสั่งพิมพ์: " + e.message);
+    }
+}
+
+async function printSingleVehicleForm4(vehicleId) {
+    try {
+        const modMonthInput = document.getElementById("moderator-month");
+        let month = modMonthInput ? modMonthInput.value : "";
+        if (!month) {
+            const now = new Date();
+            month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        const res = await fetch(`/api/report/form4?vehicle_id=${vehicleId}&month=${month}`);
+        if (!res.ok) throw new Error("ไม่สามารถดึงข้อมูลแบบ 4 ได้");
+        const data = await res.json();
+        populateForm4DOM(data);
+
+        let printStyle = document.getElementById("force-landscape-style");
+        if (!printStyle) {
+            printStyle = document.createElement("style");
+            printStyle.id = "force-landscape-style";
+            printStyle.innerHTML = "@page { size: A4 landscape !important; size: landscape !important; margin: 6mm 8mm !important; }";
+            document.head.appendChild(printStyle);
+        }
+
+        window.print();
+    } catch (e) {
+        alert("ไม่สามารถสั่งพิมพ์ได้: " + e.message);
+    }
+}
+
+// Maintenance & Service Modal Controls
+function openMaintenanceModal(preselectedVehicleId = null) {
+    const modal = document.getElementById("modal-maintenance");
+    if (!modal) return;
+
+    const vSelect = document.getElementById("maint-vehicle");
+    if (vSelect && preselectedVehicleId) {
+        vSelect.value = preselectedVehicleId;
+    }
+
+    const dateInput = document.getElementById("maint-date");
+    if (dateInput) {
+        const now = new Date();
+        dateInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    // Auto-fill vehicle current mileage
+    if (vSelect) {
+        onMaintVehicleChange(vSelect.value);
+    }
+
+    modal.classList.add("open");
+}
+
+function closeMaintenanceModal() {
+    const modal = document.getElementById("modal-maintenance");
+    if (modal) modal.classList.remove("open");
+}
+
+function onMaintVehicleChange(vehicleId) {
+    if (!currentModeratorData || !currentModeratorData.vehicles) return;
+    const v = currentModeratorData.vehicles.find(item => String(item.id) === String(vehicleId));
+    if (v) {
+        const mileageInput = document.getElementById("maint-mileage");
+        if (mileageInput && (!mileageInput.value || mileageInput.value === '0')) {
+            mileageInput.value = v.current_mileage || 0;
+            suggestNextOilChange(v.current_mileage || 0);
+        }
+    }
+}
+
+function onMaintTypeChange(type) {
+    const nextDueGroup = document.getElementById("group-next-due-mileage");
+    if (!nextDueGroup) return;
+    if (type === 'oil_change') {
+        nextDueGroup.style.display = "block";
+    } else {
+        nextDueGroup.style.display = "none";
+    }
+}
+
+function suggestNextOilChange(mileage) {
+    const m = parseInt(mileage, 10);
+    const nextInput = document.getElementById("maint-next-due-mileage");
+    if (!isNaN(m) && nextInput && (!nextInput.value || parseInt(nextInput.value, 10) <= m)) {
+        nextInput.value = m + 10000;
+    }
+}
+
+async function submitMaintenance(event) {
+    event.preventDefault();
+    try {
+        const vehicleId = parseInt(document.getElementById("maint-vehicle").value, 10);
+        const serviceType = document.getElementById("maint-type").value;
+        const serviceDate = document.getElementById("maint-date").value;
+        const mileage = parseInt(document.getElementById("maint-mileage").value, 10);
+        const nextDue = parseInt(document.getElementById("maint-next-due-mileage").value, 10) || (mileage + 10000);
+        const center = document.getElementById("maint-center").value;
+        const cost = parseFloat(document.getElementById("maint-cost").value) || 0.0;
+        const desc = document.getElementById("maint-desc").value;
+
+        const payload = {
+            vehicle_id: vehicleId,
+            service_type: serviceType,
+            service_date: serviceDate,
+            mileage: mileage,
+            next_due_mileage: nextDue,
+            cost: cost,
+            service_center: center,
+            description: desc,
+            reporter_name: "โม (ธุรการ)",
+            status: "completed"
+        };
+
+        const res = await fetch("/api/maintenance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("บันทึกข้อมูลไม่สำเร็จ");
+
+        alert("✅ บันทึกประวัติการบำรุงรักษา / ถ่ายน้ำมันเครื่องเรียบร้อยแล้วครับ!");
+        closeMaintenanceModal();
+        await loadModeratorData();
+        await loadInitialData(); // sync general vehicle state
+
+    } catch (e) {
+        alert("เกิดข้อผิดพลาด: " + e.message);
+    }
+}

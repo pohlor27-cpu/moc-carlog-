@@ -45,12 +45,38 @@ def init_db():
         )
     """)
 
-    # Check and migrate primary_driver_id column if needed
+    # Check and migrate primary_driver_id and next_oil_change_mileage column if needed
     cursor.execute("PRAGMA table_info(vehicles)")
     columns = [row["name"] for row in cursor.fetchall()]
     if "primary_driver_id" not in columns:
         cursor.execute("ALTER TABLE vehicles ADD COLUMN primary_driver_id INTEGER DEFAULT 1")
         cursor.execute("UPDATE vehicles SET primary_driver_id = id WHERE id IN (1, 2, 3, 4)")
+    if "next_oil_change_mileage" not in columns:
+        cursor.execute("ALTER TABLE vehicles ADD COLUMN next_oil_change_mileage INTEGER DEFAULT 60000")
+        # Default reasonable next oil change targets
+        cursor.execute("UPDATE vehicles SET next_oil_change_mileage = 60000 WHERE id = 1")
+        cursor.execute("UPDATE vehicles SET next_oil_change_mileage = 10000 WHERE id = 2")
+        cursor.execute("UPDATE vehicles SET next_oil_change_mileage = 10000 WHERE id = 3")
+        cursor.execute("UPDATE vehicles SET next_oil_change_mileage = 10000 WHERE id = 4")
+
+    # Maintenance & Service Logs Table (แจ้งซ่อม / บันทึกประวัติเข้าศูนย์ / ถ่ายน้ำมันเครื่อง)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS maintenance_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vehicle_id INTEGER NOT NULL,
+            service_type TEXT NOT NULL, -- 'oil_change', 'repair', 'inspection', 'tire'
+            service_date TEXT NOT NULL,
+            mileage INTEGER NOT NULL,
+            next_due_mileage INTEGER,
+            cost REAL DEFAULT 0,
+            service_center TEXT,
+            description TEXT,
+            reporter_name TEXT,
+            status TEXT DEFAULT 'completed', -- 'pending', 'in_progress', 'completed'
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (vehicle_id) REFERENCES vehicles(id)
+        )
+    """)
 
     # Trips table (Logs conforming to แบบ 4)
     cursor.execute("""

@@ -153,6 +153,20 @@ class VehicleUpdate(BaseModel):
     license_plate: Optional[str] = None
     model: Optional[str] = None
     current_mileage: Optional[int] = None
+    next_oil_change_mileage: Optional[int] = None
+    primary_driver_id: Optional[int] = None
+
+class MaintenanceCreate(BaseModel):
+    vehicle_id: int
+    service_type: str  # 'oil_change', 'repair', 'inspection', 'tire'
+    service_date: str
+    mileage: int
+    next_due_mileage: Optional[int] = None
+    cost: Optional[float] = 0.0
+    service_center: Optional[str] = ""
+    description: Optional[str] = ""
+    reporter_name: Optional[str] = "โม (ธุรการ)"
+    status: Optional[str] = "completed"
 
 @app.put("/api/vehicles/{vehicle_id}")
 def update_vehicle(vehicle_id: int, vehicle: VehicleUpdate):
@@ -160,6 +174,10 @@ def update_vehicle(vehicle_id: int, vehicle: VehicleUpdate):
     cursor = conn.cursor()
     if vehicle.current_mileage is not None:
         cursor.execute("UPDATE vehicles SET current_mileage = ? WHERE id = ?", (vehicle.current_mileage, vehicle_id))
+    if vehicle.next_oil_change_mileage is not None:
+        cursor.execute("UPDATE vehicles SET next_oil_change_mileage = ? WHERE id = ?", (vehicle.next_oil_change_mileage, vehicle_id))
+    if vehicle.primary_driver_id is not None:
+        cursor.execute("UPDATE vehicles SET primary_driver_id = ? WHERE id = ?", (vehicle.primary_driver_id, vehicle_id))
     if vehicle.license_plate:
         cursor.execute("UPDATE vehicles SET license_plate = ? WHERE id = ?", (vehicle.license_plate, vehicle_id))
     if vehicle.model:
@@ -167,6 +185,166 @@ def update_vehicle(vehicle_id: int, vehicle: VehicleUpdate):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+# Maintenance & Service Log APIs
+@app.get("/api/maintenance")
+def get_maintenance(vehicle_id: Optional[int] = None):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    query = """
+        SELECT m.*, v.license_plate, v.model as vehicle_model
+        FROM maintenance_logs m
+        JOIN vehicles v ON m.vehicle_id = v.id
+        WHERE 1=1
+    """
+    params = []
+    if vehicle_id:
+        query += " AND m.vehicle_id = ?"
+        params.append(vehicle_id)
+    query += " ORDER BY m.service_date DESC, m.id DESC"
+    cursor.execute(query, params)
+    logs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"maintenance_logs": logs}
+
+@app.post("/api/maintenance")
+def create_maintenance(item: MaintenanceCreate):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO maintenance_logs (
+            vehicle_id, service_type, service_date, mileage,
+            next_due_mileage, cost, service_center, description,
+            reporter_name, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        item.vehicle_id, item.service_type, item.service_date, item.mileage,
+        item.next_due_mileage, item.cost, item.service_center, item.description,
+        item.reporter_name, item.status
+    ))
+    
+    # If it's an oil change with next_due_mileage, update vehicle's target
+    if item.service_type == "oil_change" and item.next_due_mileage and item.next_due_mileage > 0:
+        cursor.execute("UPDATE vehicles SET next_oil_change_mileage = ? WHERE id = ?", (item.next_due_mileage, item.vehicle_id))
+        
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    return {"status": "success", "id": new_id}
+
+@app.get("/api/moderator/overview")
+def get_moderator_overview(month: Optional[str] = None):
+    """
+    Consolidated analytics for Moderator Dashboard:
+    - 4 Vehicles Live Status (at office vs departed)
+    - Monthly mileage and fuel breakdown per vehicle
+    - Driver statistics (trips, ad-hoc missions)
+    - Oil change status & alerts (<1000km warning)
+    - Recent trips
+    """
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+        
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    # Fetch vehicles
+    cursor.execute("""
+        SELECT v.*, d.name as primary_driver_name, d.phone as primary_driver_phone
+        FROM vehicles v
+        LEFT JOIN drivers d ON v.primary_driver_id = d.id
+        WHERE v.is_active = 1
+        ORDER BY v.id ASC
+    """)
+    vehicles = [dict(row) for row in cursor.fetchall()]
+    
+    # Check current active trip for each vehicle
+    for v in vehicles:
+        sync_vehicle_mileage(cursor, v["id"])
+        cursor.execute("""
+            SELECT t.*, d.name as current_driver_name
+            FROM trips t
+            JOIN drivers d ON t.driver_id = d.id
+            WHERE t.vehicle_id = ? AND t.status = 'departed'
+            ORDER BY t.id DESC LIMIT 1
+        """, (v["id"],))
+        active_trip = cursor.fetchone()
+        if active_trip:
+            act = dict(active_trip)
+            is_ad_hoc = (act["driver_id"] != v.get("primary_driver_id"))
+            act["is_ad_hoc"] = is_ad_hoc
+            act["driver_name"] = f"{act['current_driver_name']} (ผู้ขับขี่เฉพาะกิจ)" if is_ad_hoc else act['current_driver_name']
+            v["active_trip"] = act
+            v["status"] = "on_mission"
+        else:
+            v["active_trip"] = None
+            v["status"] = "available"
+            
+        # Oil change remaining calculation
+        curr_m = v.get("current_mileage") or 0
+        next_m = v.get("next_oil_change_mileage") or (curr_m + 10000)
+        rem_m = max(0, next_m - curr_m)
+        v["oil_remaining_km"] = rem_m
+        v["oil_target_km"] = next_m
+        if rem_m <= 0:
+            v["oil_status"] = "overdue"      # เกินกำหนด
+        elif rem_m <= 1000:
+            v["oil_status"] = "warning"      # ใกล้ถึงกำหนด
+        else:
+            v["oil_status"] = "ok"           # ปกติ
+            
+    # Monthly aggregate for all trips in month
+    cursor.execute("""
+        SELECT t.*, v.license_plate, d.name as driver_name, v.primary_driver_id
+        FROM trips t
+        JOIN vehicles v ON t.vehicle_id = v.id
+        JOIN drivers d ON t.driver_id = d.id
+        WHERE t.depart_date LIKE ?
+        ORDER BY t.depart_date DESC, t.depart_time DESC, t.id DESC
+    """, (f"{month}%",))
+    month_trips = [dict(row) for row in cursor.fetchall()]
+    
+    total_trips = len(month_trips)
+    total_distance = sum(t["distance_km"] or 0 for t in month_trips)
+    total_fuel = sum(t["fuel_liters"] or 0 for t in month_trips)
+    ad_hoc_trips = sum(1 for t in month_trips if t["driver_id"] != t.get("primary_driver_id"))
+    
+    # Per vehicle breakdown
+    vehicle_stats = []
+    for v in vehicles:
+        v_trips = [t for t in month_trips if t["vehicle_id"] == v["id"]]
+        v_dist = sum(t["distance_km"] or 0 for t in v_trips)
+        v_fuel = sum(t["fuel_liters"] or 0 for t in v_trips)
+        vehicle_stats.append({
+            "vehicle_id": v["id"],
+            "license_plate": v["license_plate"],
+            "primary_driver": v["primary_driver_name"],
+            "trips_count": len(v_trips),
+            "distance_km": v_dist,
+            "fuel_liters": round(v_fuel, 2),
+            "current_mileage": v["current_mileage"],
+            "oil_remaining_km": v["oil_remaining_km"],
+            "oil_status": v["oil_status"]
+        })
+        
+    conn.commit()
+    conn.close()
+    
+    return {
+        "month": month,
+        "summary": {
+            "total_vehicles": len(vehicles),
+            "vehicles_available": sum(1 for v in vehicles if v["status"] == "available"),
+            "vehicles_on_mission": sum(1 for v in vehicles if v["status"] == "on_mission"),
+            "total_trips": total_trips,
+            "total_distance_km": total_distance,
+            "total_fuel_liters": round(total_fuel, 2),
+            "ad_hoc_trips": ad_hoc_trips
+        },
+        "vehicles": vehicles,
+        "vehicle_stats": vehicle_stats,
+        "recent_trips": month_trips[:20]
+    }
 
 # OCR Vision Analysis Endpoint
 @app.post("/api/ocr/analyze")

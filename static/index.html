@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.7.0">
+    <link rel="stylesheet" href="/css/style.css?v=2.8.0">
 </head>
 <body>
 
@@ -22,7 +22,8 @@
                 </div>
             </div>
             <div class="nav-tabs">
-                <button class="nav-tab-btn active">📱 หน้าหลัก</button>
+                <button class="nav-tab-btn active" id="tab-driver-btn" onclick="switchTab('driver')">📱 หน้าหลัก (ผขร.)</button>
+                <button class="nav-tab-btn" id="tab-moderator-btn" onclick="switchTab('moderator')">👩‍💼 แดชบอร์ดเจ้าหน้าที่ (โม)</button>
                 <button class="nav-tab-btn" id="btn-admin-settings" onclick="openSettingsModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);">
                     <span>⚙️</span>
                     <span>เชื่อมต่อ Google Drive</span>
@@ -33,116 +34,265 @@
 
     <main class="main-content no-print">
 
-        <!-- Active Vehicle Focus Banner -->
-        <section style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 20px; box-shadow: var(--shadow-md); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;">
-            <div>
-                <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">รถยนต์ประจำพนักงานขับรถ</div>
-                <div id="top-car-plate" style="font-size: 1.5rem; font-weight: 700; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
-                    <span>🚙</span> ขก 225 นนทบุรี
+        <!-- ========================================== -->
+        <!-- TAB 1: DRIVER VIEW (มุมมองพนักงานขับรถ) -->
+        <!-- ========================================== -->
+        <div id="view-driver">
+
+            <!-- Active Vehicle Focus Banner -->
+            <section style="background: linear-gradient(135deg, #1e293b, #0f172a); color: white; border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 20px; box-shadow: var(--shadow-md); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;">
+                <div>
+                    <div style="font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">รถยนต์ประจำพนักงานขับรถ</div>
+                    <div id="top-car-plate" style="font-size: 1.5rem; font-weight: 700; color: #60a5fa; display: flex; align-items: center; gap: 8px;">
+                        <span>🚙</span> ขก 225 นนทบุรี
+                    </div>
+                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
+                        ผู้ขับขี่: <strong id="top-driver-name" style="color: #fde047;">กฤษณพัฒน์ แสงหล้า</strong> | สิ้นเดือน: <strong>กันยายน 2569</strong>
+                    </div>
                 </div>
-                <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
-                    ผู้ขับขี่: <strong id="top-driver-name" style="color: #fde047;">กฤษณพัฒน์ แสงหล้า</strong> | สิ้นเดือน: <strong>กันยายน 2569</strong>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="text-align: right; background: rgba(255,255,255,0.08); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12);">
+                        <div style="font-size: 0.75rem; color: #94a3b8;">เลขไมล์เริ่มต้น/ปัจจุบัน</div>
+                        <div id="top-car-mileage" style="font-size: 1.6rem; font-weight: 800; color: #34d399; font-family: monospace;">52,204</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">กิโลเมตร (กม.)</div>
+                    </div>
+                    <button type="button" onclick="openEditMileageModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 10px 14px; border-radius: var(--radius-md); font-family: 'Prompt', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span style="font-size: 1.2rem;">⚙️</span>
+                        <span>แก้ไขไมล์</span>
+                    </button>
                 </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="text-align: right; background: rgba(255,255,255,0.08); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12);">
-                    <div style="font-size: 0.75rem; color: #94a3b8;">เลขไมล์เริ่มต้น/ปัจจุบัน</div>
-                    <div id="top-car-mileage" style="font-size: 1.6rem; font-weight: 800; color: #34d399; font-family: monospace;">52,204</div>
-                    <div style="font-size: 0.75rem; color: #94a3b8;">กิโลเมตร (กม.)</div>
+            </section>
+
+            <!-- 1. Driver Profile Selector (ผขร. 4 คน) -->
+            <section class="driver-select-section">
+                <div class="section-label">
+                    <span>👤</span>
+                    <span>เลือกพนักงานขับรถ (แตะเลือกชื่อของตนเอง):</span>
                 </div>
-                <button type="button" onclick="openEditMileageModal()" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 10px 14px; border-radius: var(--radius-md); font-family: 'Prompt', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                    <span style="font-size: 1.2rem;">⚙️</span>
-                    <span>แก้ไขไมล์</span>
+                <div class="driver-grid" id="driver-grid">
+                    <!-- Injected via JavaScript -->
+                </div>
+            </section>
+
+            <!-- 2. Big Action Buttons -->
+            <section class="action-banner" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <button class="big-btn big-btn-depart" onclick="openDepartModal()">
+                    <div class="big-btn-icon">🚗</div>
+                    <div class="big-btn-title">บันทึกเวลาออก</div>
+                    <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์ออก</div>
                 </button>
-            </div>
-        </section>
+                <button class="big-btn big-btn-arrive" onclick="openArriveModal()">
+                    <div class="big-btn-icon">🏁</div>
+                    <div class="big-btn-title">บันทึกเวลากลับ</div>
+                    <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์กลับ</div>
+                </button>
+                <button class="big-btn" onclick="openManualModal()" style="background: linear-gradient(135deg, #475569, #334155); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25);">
+                    <div class="big-btn-icon">✏️</div>
+                    <div class="big-btn-title">กรอกเลขไมล์เอง</div>
+                    <div class="big-btn-sub">พิมพ์ลงตารางโดยตรง (ไม่ใช้รูป)</div>
+                </button>
+            </section>
 
-        <!-- 1. Driver Profile Selector (ผขร. 4 คน) -->
-        <section class="driver-select-section">
-            <div class="section-label">
-                <span>👤</span>
-                <span>เลือกพนักงานขับรถ (แตะเลือกชื่อของตนเอง):</span>
+            <!-- 3. Ongoing / Active Trips (รถที่กำลังวิ่งอยู่) -->
+            <section class="active-trips-card" id="active-trips-card" style="display: none;">
+                <div class="active-trips-header">
+                    <div style="font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px;">
+                        <span>🛣️</span> รถที่กำลังเดินทางอยู่ขณะนี้
+                    </div>
+                    <div class="active-badge">กำลังใช้งาน</div>
+                </div>
+                <div id="active-trips-list">
+                    <!-- Injected via JS -->
+                </div>
+            </section>
+
+            <!-- 4. Monthly History & Report Table -->
+            <section class="history-section">
+                <div class="history-toolbar">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">📋</span>
+                        <strong style="font-size: 1.05rem;">ประวัติบันทึกการใช้รถ</strong>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <input type="month" id="filter-month" class="form-input" style="width: auto; padding: 8px 12px;">
+                        <select id="filter-vehicle" class="form-select" style="width: auto; padding: 8px 12px;">
+                            <option value="">-- ขก 225 นนทบุรี --</option>
+                        </select>
+                        <button class="btn-submit" onclick="generateForm4Print()" style="padding: 8px 14px; font-size: 0.9rem; background: #0f172a; display: flex; align-items: center; gap: 6px;">
+                            <span>🖨️</span> สั่งพิมพ์ / บันทึกเป็น PDF (แนวนอน)
+                        </button>
+                        <button class="btn-submit" onclick="downloadForm4Image()" style="padding: 8px 14px; font-size: 0.9rem; background: #059669; display: flex; align-items: center; gap: 6px;">
+                            <span>🖼️</span> เซฟเป็นรูปภาพ (ส่ง LINE)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>เที่ยว</th>
+                                <th>ออกเดินทาง</th>
+                                <th>รถยนต์ / ผขร.</th>
+                                <th>สถานที่ไป</th>
+                                <th>ผู้รับรอง</th>
+                                <th>กลับถึง สนง.</th>
+                                <th>เลขไมล์ (ออก/กลับ)</th>
+                                <th>น้ำมัน</th>
+                                <th style="text-align:center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================================= -->
+        <!-- TAB 2: MODERATOR DASHBOARD (ศูนย์สั่งการ & จัดการสำหรับโม) -->
+        <!-- ========================================================= -->
+        <div id="view-moderator" style="display: none;">
+            
+            <!-- Hero Command Bar -->
+            <section class="moderator-hero">
+                <div>
+                    <div class="moderator-hero-title">
+                        <span>👩‍💼</span> แดชบอร์ดติดตามยานพาหนะ & รายงานแบบ 4
+                    </div>
+                    <div class="moderator-hero-sub">
+                        ระบบอำนวยความสะดวกเจ้าหน้าที่ธุรการยานพาหนะ (สนง.พาณิชย์จังหวัดเพชรบุรี)
+                    </div>
+                </div>
+                <div class="moderator-action-group">
+                    <div style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.12); padding: 4px 10px; border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.2);">
+                        <span style="font-size: 0.85rem; color: #cbd5e1;">เดือน:</span>
+                        <input type="month" id="moderator-month" class="form-input" style="width: auto; padding: 4px 8px; font-size: 0.88rem; background: white; color: #0f172a;" onchange="loadModeratorData()">
+                    </div>
+                    <button type="button" class="btn-submit" onclick="generateBatchForm4Print()" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 9px 16px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+                        <span style="font-size: 1.1rem;">🖨️</span>
+                        <span>พิมพ์แบบ 4 ครบ 4 คัน (รวดเดียว)</span>
+                    </button>
+                    <button type="button" class="btn-submit" onclick="openMaintenanceModal()" style="background: linear-gradient(135deg, #059669, #047857); padding: 9px 14px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                        <span style="font-size: 1.1rem;">🔧</span>
+                        <span>แจ้งซ่อม / บันทึกเข้าศูนย์</span>
+                    </button>
+                    <button type="button" class="chip-btn" onclick="loadModeratorData()" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 9px 12px; font-size: 0.9rem;">
+                        🔄 รีเฟรช
+                    </button>
+                </div>
+            </section>
+
+            <!-- 1. 4-Car Bento Grid Fleet Status -->
+            <div style="font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <span>🚘</span> สถานะยานพาหนะประจำสำนักงาน (4 คัน)
             </div>
-            <div class="driver-grid" id="driver-grid">
+            <section class="bento-fleet-grid" id="moderator-bento-fleet">
                 <!-- Injected via JavaScript -->
-            </div>
-        </section>
+            </section>
 
-        <!-- 2. Big Action Buttons -->
-        <section class="action-banner" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-            <button class="big-btn big-btn-depart" onclick="openDepartModal()">
-                <div class="big-btn-icon">🚗</div>
-                <div class="big-btn-title">บันทึกเวลาออก</div>
-                <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์ออก</div>
-            </button>
-            <button class="big-btn big-btn-arrive" onclick="openArriveModal()">
-                <div class="big-btn-icon">🏁</div>
-                <div class="big-btn-title">บันทึกเวลากลับ</div>
-                <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์กลับ</div>
-            </button>
-            <button class="big-btn" onclick="openManualModal()" style="background: linear-gradient(135deg, #475569, #334155); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25);">
-                <div class="big-btn-icon">✏️</div>
-                <div class="big-btn-title">กรอกเลขไมล์เอง</div>
-                <div class="big-btn-sub">พิมพ์ลงตารางโดยตรง (ไม่ใช้รูป)</div>
-            </button>
-        </section>
+            <!-- 2. Apple Fitness 3D Rings & Key Metrics -->
+            <section class="analytics-grid">
+                <!-- Activity Rings Card -->
+                <div class="rings-card">
+                    <div style="font-size: 0.95rem; font-weight: 700; letter-spacing: 0.5px; color: #f8fafc; display: flex; align-items: center; gap: 6px;">
+                        <span>🎯</span> สัดส่วนการใช้รถแยกรายคัน
+                    </div>
+                    <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">เปรียบเทียบระยะทางวิ่ง (กม.) ในเดือนนี้</div>
+                    
+                    <div class="rings-svg-container" id="moderator-rings-container">
+                        <!-- Injected via JS SVG Rings -->
+                    </div>
 
-        <!-- 3. Ongoing / Active Trips (รถที่กำลังวิ่งอยู่) -->
-        <section class="active-trips-card" id="active-trips-card" style="display: none;">
-            <div class="active-trips-header">
-                <div style="font-weight: 700; color: #b45309; display: flex; align-items: center; gap: 6px;">
-                    <span>🛣️</span> รถที่กำลังเดินทางอยู่ขณะนี้
-                </div>
-                <div class="active-badge">กำลังใช้งาน</div>
-            </div>
-            <div id="active-trips-list">
-                <!-- Injected via JS -->
-            </div>
-        </section>
-
-        <!-- 4. Monthly History & Report Table -->
-        <section class="history-section">
-            <div class="history-toolbar">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.2rem;">📋</span>
-                    <strong style="font-size: 1.05rem;">ประวัติบันทึกการใช้รถ</strong>
-                </div>
-                
-                <div class="filter-group">
-                    <input type="month" id="filter-month" class="form-input" style="width: auto; padding: 8px 12px;">
-                    <select id="filter-vehicle" class="form-select" style="width: auto; padding: 8px 12px;">
-                        <option value="">-- ขก 225 นนทบุรี --</option>
-                    </select>
-                    <button class="btn-submit" onclick="generateForm4Print()" style="padding: 8px 14px; font-size: 0.9rem; background: #0f172a; display: flex; align-items: center; gap: 6px;">
-                        <span>🖨️</span> สั่งพิมพ์ / บันทึกเป็น PDF (แนวนอน)
-                    </button>
-                    <button class="btn-submit" onclick="downloadForm4Image()" style="padding: 8px 14px; font-size: 0.9rem; background: #059669; display: flex; align-items: center; gap: 6px;">
-                        <span>🖼️</span> เซฟเป็นรูปภาพ (ส่ง LINE)
-                    </button>
-                </div>
-            </div>
-
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>เที่ยว</th>
-                            <th>ออกเดินทาง</th>
-                            <th>รถยนต์ / ผขร.</th>
-                            <th>สถานที่ไป</th>
-                            <th>ผู้รับรอง</th>
-                            <th>กลับถึง สนง.</th>
-                            <th>เลขไมล์ (ออก/กลับ)</th>
-                            <th>น้ำมัน</th>
-                            <th style="text-align:center;">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="history-table-body">
+                    <div class="rings-legend" id="moderator-rings-legend">
                         <!-- Injected via JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                    </div>
+                </div>
+
+                <!-- Bento Metrics 4-Pack -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon-box" style="background: #eff6ff; color: #2563eb;">🛣️</div>
+                        <div>
+                            <div class="metric-val" id="metric-total-distance">0 <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">กม.</span></div>
+                            <div class="metric-label">ระยะทางวิ่งรวมเดือนนี้</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box" style="background: #ecfdf5; color: #059669;">⛽</div>
+                        <div>
+                            <div class="metric-val" id="metric-total-fuel">0 <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">ลิตร</span></div>
+                            <div class="metric-label">ปริมาณน้ำมันที่เบิกจ่าย</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box" style="background: #fdf4ff; color: #a855f7;">📋</div>
+                        <div>
+                            <div class="metric-val" id="metric-total-trips">0 <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">เที่ยว</span></div>
+                            <div class="metric-label">จำนวนการออกปฏิบัติงาน</div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box" style="background: #fffbeb; color: #d97706;">👤</div>
+                        <div>
+                            <div class="metric-val" id="metric-adhoc-trips">0 <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">เที่ยว</span></div>
+                            <div class="metric-label">ภารกิจผู้ขับขี่เฉพาะกิจ</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Trips Cross-Check & Request Matcher Table -->
+            <section class="moderator-table-section">
+                <div class="table-toolbar-flex">
+                    <div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                            <span>📑</span> รายการเดินทางทั้งหมด (ตรวจสอบความครบถ้วนเอกสาร)
+                        </div>
+                        <div style="font-size: 0.82rem; color: #64748b;">เทียบข้อมูลกับใบขอใช้รถราชการ และตรวจสอบสถานะปิดทริป</div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <div class="search-input-box">
+                            <span class="search-input-icon">🔍</span>
+                            <input type="text" id="moderator-search-input" class="form-input" placeholder="ค้นหาทะเบียน, คนขับ, ปลายทาง..." oninput="filterModeratorTrips()">
+                        </div>
+                        <select id="moderator-filter-vehicle" class="form-select" style="width: auto;" onchange="filterModeratorTrips()">
+                            <option value="">-- ทุกคัน (4 คัน) --</option>
+                            <option value="1">ขก 225 นนทบุรี</option>
+                            <option value="2">กอ 409 เพชรบุรี</option>
+                            <option value="3">ขก 192 นนทบุรี</option>
+                            <option value="4">นจ 4648 เพชรบุรี</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ว/ด/ป</th>
+                                <th>ทะเบียนรถ</th>
+                                <th>พนักงานขับรถ</th>
+                                <th>สถานที่ไป / ภารกิจ</th>
+                                <th>ผู้รับรอง</th>
+                                <th>เวลา (ออก - กลับ)</th>
+                                <th>ระยะทาง</th>
+                                <th>น้ำมัน</th>
+                                <th>สถานะใบขอใช้รถ</th>
+                                <th style="text-align: center;">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="moderator-trips-table-body">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </div>
 
     </main>
 
@@ -752,6 +902,76 @@
         </div>
     </div>
 
+    <!-- Modal 6: บันทึกการบำรุงรักษา / แจ้งซ่อม / ถ่ายน้ำมันเครื่อง (Maintenance) -->
+    <div class="modal-overlay" id="modal-maintenance">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">🔧 บันทึกการบำรุงรักษา / แจ้งซ่อมรถ</div>
+                <button class="modal-close" onclick="closeMaintenanceModal()">✕</button>
+            </div>
+            <form onsubmit="submitMaintenance(event)">
+                <div class="form-group">
+                    <label class="form-label">เลือกรถยนต์ราชการ</label>
+                    <select id="maint-vehicle" class="form-select" required onchange="onMaintVehicleChange(this.value)">
+                        <option value="1">ขก 225 นนทบุรี (กฤษณพัฒน์ แสงหล้า)</option>
+                        <option value="2">กอ 409 เพชรบุรี (ประภาส ปักกิ่งเมือง)</option>
+                        <option value="3">ขก 192 นนทบุรี (ธรรมรัตน์ สุรเดชานนท์)</option>
+                        <option value="4">นจ 4648 เพชรบุรี (อนุพงศ์ บุญมาก)</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ประเภทรายการ</label>
+                        <select id="maint-type" class="form-select" required onchange="onMaintTypeChange(this.value)">
+                            <option value="oil_change">🛢️ ถ่ายน้ำมันเครื่อง</option>
+                            <option value="repair">🛠️ แจ้งซ่อมบำรุง / ซ่อมศูนย์</option>
+                            <option value="inspection">🔍 ตรวจสภาพตามระยะ</option>
+                            <option value="tire">🛞 เปลี่ยนยาง / สลับยาง</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">วันที่เข้าศูนย์ / ซ่อม</label>
+                        <input type="date" id="maint-date" class="form-input" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">เลขไมล์ตอนเข้าศูนย์ (กม.)</label>
+                        <input type="number" id="maint-mileage" class="form-input" placeholder="เช่น 52204" required oninput="suggestNextOilChange(this.value)">
+                    </div>
+                    <div class="form-group" id="group-next-due-mileage">
+                        <label class="form-label">เลขไมล์เตือนถ่ายครั้งถัดไป (กม.)</label>
+                        <input type="number" id="maint-next-due-mileage" class="form-input" placeholder="เช่น 62204 (ป้ายคอพวงมาลัย)">
+                        <small style="color: #64748b; font-size: 0.78rem;">* สติกเกอร์เตือนรอบถัดไป (+10,000 กม.)</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อู่ / ศูนย์บริการ</label>
+                        <input type="text" id="maint-center" class="form-input" placeholder="เช่น ศูนย์โตโยต้าเพชรบุรี, บี-ควิก">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ค่าใช้จ่าย (บาท)</label>
+                        <input type="number" step="0.01" id="maint-cost" class="form-input" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">รายละเอียด / อาการที่แจ้งซ่อม</label>
+                    <textarea id="maint-desc" class="form-textarea" rows="2" placeholder="เช่น ถ่ายน้ำมันเครื่องสังเคราะห์แท้ + เปลี่ยนไส้กรอง, เช็กผ้าเบรก"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeMaintenanceModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-submit" style="background: #10b981;">💾 บันทึกประวัติ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ------------------------------------------------------------- -->
     <!-- 5. TEMPLATE เอกสารราชการ: บันทึกการใช้รถราชการ (แบบ 4) สำหรับสั่งพิมพ์ -->
     <!-- ------------------------------------------------------------- -->
@@ -831,6 +1051,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.7.3"></script>
+    <script src="/js/app.js?v=2.8.0"></script>
 </body>
 </html>
