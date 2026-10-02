@@ -358,7 +358,83 @@ def get_trips(vehicle_id: Optional[int] = None, month: Optional[str] = None):
     conn.close()
     return {"trips": trips}
 
-# Direct Edit / Delete Trip
+# Direct Edit / Update Trip
+@app.put("/api/trips/{trip_id}")
+async def update_trip(
+    trip_id: int,
+    vehicle_id: int = Form(...),
+    driver_id: int = Form(...),
+    depart_date: str = Form(...),
+    depart_time: str = Form(...),
+    depart_mileage: int = Form(...),
+    destination: str = Form(...),
+    approver: str = Form(""),
+    arrive_date: Optional[str] = Form(None),
+    arrive_time: Optional[str] = Form(None),
+    arrive_mileage: Optional[int] = Form(None),
+    fuel_liters: float = Form(0.0),
+    fuel_authorizer: str = Form(""),
+    notes: str = Form("")
+):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM trips WHERE id = ?", (trip_id,))
+    trip = cursor.fetchone()
+    if not trip:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    distance_km = 0
+    status = trip["status"]
+    
+    if arrive_mileage is not None and arrive_mileage > 0:
+        distance_km = max(0, arrive_mileage - depart_mileage)
+        status = "completed"
+        
+    month_year = depart_date[:7] if len(depart_date) >= 7 else trip["month_year"]
+
+    cursor.execute("""
+        UPDATE trips SET
+            vehicle_id = ?,
+            driver_id = ?,
+            month_year = ?,
+            depart_date = ?,
+            depart_time = ?,
+            depart_mileage = ?,
+            destination = ?,
+            approver = ?,
+            arrive_date = ?,
+            arrive_time = ?,
+            arrive_mileage = ?,
+            distance_km = ?,
+            fuel_liters = ?,
+            fuel_authorizer = ?,
+            status = ?,
+            notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (
+        vehicle_id, driver_id, month_year,
+        depart_date, depart_time, depart_mileage,
+        destination, approver,
+        arrive_date, arrive_time, arrive_mileage,
+        distance_km, fuel_liters, fuel_authorizer,
+        status, notes, trip_id
+    ))
+    
+    # Update vehicle's latest mileage if this trip has the higher mileage
+    if arrive_mileage and arrive_mileage > 0:
+        cursor.execute("UPDATE vehicles SET current_mileage = MAX(COALESCE(current_mileage, 0), ?) WHERE id = ?", (arrive_mileage, vehicle_id))
+    elif depart_mileage and depart_mileage > 0:
+        cursor.execute("UPDATE vehicles SET current_mileage = MAX(COALESCE(current_mileage, 0), ?) WHERE id = ?", (depart_mileage, vehicle_id))
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "success", "trip_id": trip_id, "distance_km": distance_km}
+
+# Delete Trip
 @app.delete("/api/trips/{trip_id}")
 def delete_trip(trip_id: int):
     conn = database.get_db()

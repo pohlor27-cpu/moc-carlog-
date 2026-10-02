@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.1.1">
+    <link rel="stylesheet" href="/css/style.css?v=2.2.0">
 </head>
 <body>
 
@@ -528,6 +528,137 @@
         </div>
     </div>
 
+    <!-- Modal 5: แก้ไขข้อมูลรายการบันทึกการใช้รถ (Edit Trip Modal) -->
+    <div class="modal-overlay" id="modal-edit-trip">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">✏️ แก้ไขข้อมูลบันทึกการใช้รถ</div>
+                <button class="modal-close" onclick="closeEditTripModal()">✕</button>
+            </div>
+            <form onsubmit="submitEditTrip(event)">
+                <input type="hidden" id="edit-trip-id">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">เลือกรถยนต์</label>
+                        <select id="edit-trip-vehicle" class="form-select" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">พนักงานขับรถ</label>
+                        <select id="edit-trip-driver" class="form-select" required></select>
+                    </div>
+                </div>
+
+                <!-- ออกเดินทาง -->
+                <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+                    <div style="font-weight: 700; color: #1d4ed8; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>🚗</span> ข้อมูลตอนออกเดินทาง
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">วันที่ออก</label>
+                            <input type="date" id="edit-trip-depart-date" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">เวลาที่ออก</label>
+                            <input type="time" id="edit-trip-depart-time" class="form-input" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">เลขไมล์ตอนออก (กม.)</label>
+                        <input type="number" id="edit-trip-depart-mileage" class="form-input" required style="font-size: 1.1rem; font-weight: 700; color: #2563eb;" oninput="updateEditTripDistanceCalc()">
+                    </div>
+                </div>
+
+                <!-- ปลายทาง & Multi Quick Chips -->
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">📍 สถานที่ไป / ภารกิจ (เลือกได้หลายจุด)</label>
+                        <button type="button" class="chip-btn-clear" onclick="clearDestinations('edit-trip-destination')">🗑️ ล้างสถานที่</button>
+                    </div>
+                    <input type="text" id="edit-trip-destination" class="form-input" placeholder="พิมพ์สถานที่ หรือแตะเลือกด้านล่าง" required oninput="syncDestinationChips('edit-trip-destination')">
+                    
+                    <!-- Group 1: สถานที่สำคัญ -->
+                    <div class="chips-category">
+                        <div class="chips-category-title">
+                            <span>🏛️ สถานที่สำคัญ / จุดทำธุระ</span>
+                        </div>
+                        <div class="chips-container">
+                            <button type="button" class="chip-btn" data-dest="ศาลากลาง จ.เพชรบุรี" onclick="toggleDestination('edit-trip-destination', 'ศาลากลาง จ.เพชรบุรี')">🏛️ ศาลากลาง จ.เพชรบุรี</button>
+                            <button type="button" class="chip-btn" data-dest="กระทรวงพาณิชย์ (นนทบุรี)" onclick="toggleDestination('edit-trip-destination', 'กระทรวงพาณิชย์ (นนทบุรี)')">🏢 กระทรวงพาณิชย์</button>
+                            <button type="button" class="chip-btn" data-dest="ไปรษณีย์" onclick="toggleDestination('edit-trip-destination', 'ไปรษณีย์')">📮 ไปรษณีย์</button>
+                            <button type="button" class="chip-btn" data-dest="ตรวจตลาดสด" onclick="toggleDestination('edit-trip-destination', 'ตรวจตลาดสด')">🛒 ตรวจตลาดสด</button>
+                            <button type="button" class="chip-btn" data-dest="ธนาคาร" onclick="toggleDestination('edit-trip-destination', 'ธนาคาร')">🏦 ธนาคาร</button>
+                        </div>
+                    </div>
+
+                    <!-- Group 2: อำเภอในเพชรบุรี (Scrollbar แนวนอน ทั้ง 8 อำเภอ) -->
+                    <div class="chips-category">
+                        <div class="chips-category-title">
+                            <span>🗺️ อำเภอใน จ.เพชรบุรี (เลื่อนแนวนอนได้ 👉)</span>
+                        </div>
+                        <div class="chips-scroll-container">
+                            <button type="button" class="chip-btn" data-dest="อ.เมืองเพชรบุรี" onclick="toggleDestination('edit-trip-destination', 'อ.เมืองเพชรบุรี')">📍 อ.เมืองเพชรบุรี</button>
+                            <button type="button" class="chip-btn" data-dest="อ.ชะอำ" onclick="toggleDestination('edit-trip-destination', 'อ.ชะอำ')">🏖️ อ.ชะอำ</button>
+                            <button type="button" class="chip-btn" data-dest="อ.ท่ายาง" onclick="toggleDestination('edit-trip-destination', 'อ.ท่ายาง')">📍 อ.ท่ายาง</button>
+                            <button type="button" class="chip-btn" data-dest="อ.บ้านลาด" onclick="toggleDestination('edit-trip-destination', 'อ.บ้านลาด')">📍 อ.บ้านลาด</button>
+                            <button type="button" class="chip-btn" data-dest="อ.บ้านแหลม" onclick="toggleDestination('edit-trip-destination', 'อ.บ้านแหลม')">🦐 อ.บ้านแหลม</button>
+                            <button type="button" class="chip-btn" data-dest="อ.เขาย้อย" onclick="toggleDestination('edit-trip-destination', 'อ.เขาย้อย')">⛰️ อ.เขาย้อย</button>
+                            <button type="button" class="chip-btn" data-dest="อ.แก่งกระจาน" onclick="toggleDestination('edit-trip-destination', 'อ.แก่งกระจาน')">🌲 อ.แก่งกระจาน</button>
+                            <button type="button" class="chip-btn" data-dest="อ.หนองหญ้าปล้อง" onclick="toggleDestination('edit-trip-destination', 'อ.หนองหญ้าปล้อง')">🌾 อ.หนองหญ้าปล้อง</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ</label>
+                    <input type="text" id="edit-trip-approver" class="form-input" placeholder="เช่น หัวหน้ากลุ่มยุทธศาสตร์ฯ">
+                </div>
+
+                <!-- กลับถึง สนง. -->
+                <div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="font-weight: 700; color: #15803d; display: flex; align-items: center; gap: 6px;">
+                            <span>🏁</span> ข้อมูลตอนกลับถึง สนง.
+                        </div>
+                        <span id="edit-trip-calc-distance-badge" style="font-size: 0.85rem; font-weight: 700; color: #15803d;"></span>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">วันที่กลับถึง</label>
+                            <input type="date" id="edit-trip-arrive-date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">เวลากลับถึง</label>
+                            <input type="time" id="edit-trip-arrive-time" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">เลขไมล์ตอนกลับ (กม.)</label>
+                        <input type="number" id="edit-trip-arrive-mileage" class="form-input" placeholder="เช่น 52250" style="font-size: 1.1rem; font-weight: 700; color: #15803d;" oninput="updateEditTripDistanceCalc()">
+                    </div>
+                </div>
+
+                <!-- น้ำมัน -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">น้ำมันที่เติม (ลิตร ถ้ามี)</label>
+                        <input type="number" step="0.01" id="edit-trip-fuel-liters" class="form-input" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ผู้สั่งจ่ายน้ำมัน</label>
+                        <input type="text" id="edit-trip-fuel-authorizer" class="form-input" placeholder="เช่น พจ.เพชรบุรี">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditTripModal()">ยกเลิก</button>
+                    <button type="submit" id="btn-edit-trip-submit" class="btn-submit" style="background: #2563eb;">💾 บันทึกการแก้ไข</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ------------------------------------------------------------- -->
     <!-- 5. TEMPLATE เอกสารราชการ: บันทึกการใช้รถราชการ (แบบ 4) สำหรับสั่งพิมพ์ -->
     <!-- ------------------------------------------------------------- -->
@@ -601,6 +732,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.1.1"></script>
+    <script src="/js/app.js?v=2.2.0"></script>
 </body>
 </html>

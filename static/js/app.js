@@ -122,6 +122,14 @@ function renderDriversGrid() {
         `;
         container.appendChild(card);
     });
+
+    // Also populate edit trip driver select
+    const editDriverSelect = document.getElementById("edit-trip-driver");
+    if (editDriverSelect) {
+        editDriverSelect.innerHTML = appState.drivers.map(d => 
+            `<option value="${d.id}">${d.nickname ? `${d.nickname} (${d.name})` : d.name}</option>`
+        ).join("");
+    }
 }
 
 function selectDriver(driverId) {
@@ -170,6 +178,7 @@ function renderVehicleSelects() {
     const manualSelect = document.getElementById("manual-vehicle");
     const filterSelect = document.getElementById("filter-vehicle");
     const editSelect = document.getElementById("edit-mileage-vehicle");
+    const editTripSelect = document.getElementById("edit-trip-vehicle");
     
     const optionsHtml = appState.vehicles.map(v => 
         `<option value="${v.id}" data-mileage="${v.current_mileage}">${v.license_plate} - ไมล์ล่าสุด: ${v.current_mileage.toLocaleString()} กม.</option>`
@@ -178,6 +187,7 @@ function renderVehicleSelects() {
     if (departSelect) departSelect.innerHTML = optionsHtml;
     if (manualSelect) manualSelect.innerHTML = optionsHtml;
     if (editSelect) editSelect.innerHTML = optionsHtml;
+    if (editTripSelect) editTripSelect.innerHTML = optionsHtml;
     if (filterSelect) {
         filterSelect.innerHTML = appState.vehicles.map(v => `<option value="${v.id}">${v.license_plate}</option>`).join("");
     }
@@ -296,8 +306,9 @@ function renderHistoryTable() {
                 <td>
                     ${trip.fuel_liters ? `<span style="color:#d97706; font-weight:600;">⛽ ${trip.fuel_liters} ลิตร</span>` : '-'}
                 </td>
-                <td style="text-align:center;">
-                    <button class="action-icon-btn" onclick="deleteTrip(${trip.id})" title="ลบรายการ">🗑️</button>
+                <td style="text-align:center; white-space: nowrap;">
+                    <button class="action-icon-btn" onclick="openEditTripModal(${trip.id})" title="แก้ไขรายการ" style="color: #2563eb; margin-right: 6px; font-size: 1.05rem;">✏️</button>
+                    <button class="action-icon-btn" onclick="deleteTrip(${trip.id})" title="ลบรายการ" style="color: #ef4444; font-size: 1.05rem;">🗑️</button>
                 </td>
             </tr>
         `;
@@ -885,4 +896,110 @@ function initEventListeners() {
     }
 
     document.getElementById("filter-vehicle")?.addEventListener("change", loadHistoryTrips);
+}
+
+// ----------------- Edit Trip Modal Handlers -----------------
+
+function openEditTripModal(tripId) {
+    const trip = appState.historyTrips.find(t => t.id === tripId) || appState.activeTrips.find(t => t.id === tripId);
+    if (!trip) {
+        alert("ไม่พบข้อมูลรายการนี้");
+        return;
+    }
+
+    document.getElementById("edit-trip-id").value = trip.id;
+    
+    // Vehicle & Driver
+    const vehSelect = document.getElementById("edit-trip-vehicle");
+    if (vehSelect) vehSelect.value = trip.vehicle_id;
+    const drvSelect = document.getElementById("edit-trip-driver");
+    if (drvSelect) drvSelect.value = trip.driver_id;
+
+    // Depart Info
+    document.getElementById("edit-trip-depart-date").value = trip.depart_date || getTodayInputFormat();
+    document.getElementById("edit-trip-depart-time").value = trip.depart_time || getTimeNow();
+    document.getElementById("edit-trip-depart-mileage").value = trip.depart_mileage || 0;
+
+    // Destination & Approver
+    document.getElementById("edit-trip-destination").value = trip.destination || "";
+    syncDestinationChips("edit-trip-destination");
+    document.getElementById("edit-trip-approver").value = trip.approver || "";
+
+    // Arrive Info
+    document.getElementById("edit-trip-arrive-date").value = trip.arrive_date || trip.depart_date || getTodayInputFormat();
+    document.getElementById("edit-trip-arrive-time").value = trip.arrive_time || "";
+    document.getElementById("edit-trip-arrive-mileage").value = trip.arrive_mileage || "";
+
+    // Fuel Info
+    document.getElementById("edit-trip-fuel-liters").value = trip.fuel_liters || "";
+    document.getElementById("edit-trip-fuel-authorizer").value = trip.fuel_authorizer || "";
+
+    updateEditTripDistanceCalc();
+    document.getElementById("modal-edit-trip").classList.add("open");
+}
+
+function closeEditTripModal() {
+    document.getElementById("modal-edit-trip").classList.remove("open");
+}
+
+function updateEditTripDistanceCalc() {
+    const dep = parseInt(document.getElementById("edit-trip-depart-mileage").value) || 0;
+    const arr = parseInt(document.getElementById("edit-trip-arrive-mileage").value) || 0;
+    const dist = Math.max(0, arr - dep);
+    const badge = document.getElementById("edit-trip-calc-distance-badge");
+    if (badge) {
+        if (arr > 0) {
+            badge.innerText = `ระยะทาง: ${dist.toLocaleString()} กม.`;
+        } else {
+            badge.innerText = `กำลังเดินทาง`;
+        }
+    }
+}
+
+async function submitEditTrip(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btn-edit-trip-submit");
+    btn.disabled = true;
+    btn.innerText = "กำลังบันทึก...";
+
+    const tripId = document.getElementById("edit-trip-id").value;
+    const formData = new FormData();
+    formData.append("vehicle_id", document.getElementById("edit-trip-vehicle").value);
+    formData.append("driver_id", document.getElementById("edit-trip-driver").value);
+    formData.append("depart_date", document.getElementById("edit-trip-depart-date").value);
+    formData.append("depart_time", document.getElementById("edit-trip-depart-time").value);
+    formData.append("depart_mileage", document.getElementById("edit-trip-depart-mileage").value);
+    formData.append("destination", document.getElementById("edit-trip-destination").value);
+    formData.append("approver", document.getElementById("edit-trip-approver").value);
+    
+    const arrDate = document.getElementById("edit-trip-arrive-date").value;
+    const arrTime = document.getElementById("edit-trip-arrive-time").value;
+    const arrMileage = document.getElementById("edit-trip-arrive-mileage").value;
+    
+    if (arrDate) formData.append("arrive_date", arrDate);
+    if (arrTime) formData.append("arrive_time", arrTime);
+    if (arrMileage) formData.append("arrive_mileage", arrMileage);
+    
+    formData.append("fuel_liters", document.getElementById("edit-trip-fuel-liters").value || "0");
+    formData.append("fuel_authorizer", document.getElementById("edit-trip-fuel-authorizer").value || "");
+
+    try {
+        const res = await fetch(`/api/trips/${tripId}`, {
+            method: "PUT",
+            body: formData
+        });
+        const result = await res.json();
+        if (res.ok && result.status === "success") {
+            closeEditTripModal();
+            await loadInitialData();
+            alert("✅ บันทึกการแก้ไขข้อมูลเรียบร้อยแล้วครับ!");
+        } else {
+            alert(`⚠️ เกิดข้อผิดพลาด: ${result.detail || 'ไม่สามารถแก้ไขได้'}`);
+        }
+    } catch (e) {
+        alert("⚠️ เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "💾 บันทึกการแก้ไข";
+    }
 }
