@@ -196,7 +196,7 @@ class MaintenanceCreate(BaseModel):
     cost: Optional[float] = 0.0
     service_center: Optional[str] = ""
     description: Optional[str] = ""
-    reporter_name: Optional[str] = "โม (ธุรการ)"
+    reporter_name: Optional[str] = "เจ้าหน้าที่ธุรการ"
     status: Optional[str] = "completed"
 
 @app.put("/api/vehicles/{vehicle_id}")
@@ -867,7 +867,7 @@ def verify_pin(req: VerifyPinRequest):
         return {
             "success": True,
             "role": "moderator",
-            "message": "เข้าสู่ระบบโมเดอเรเตอร์สำเร็จ"
+            "message": "เข้าสู่ระบบเจ้าหน้าที่สำเร็จ"
         }
     else:
         return JSONResponse(
@@ -895,7 +895,7 @@ def change_pin(req: ChangePinRequest):
     
     return {
         "success": True,
-        "message": f"เปลี่ยนรหัสผ่านโมเดอเรเตอร์เป็น '{new_p}' เรียบร้อยแล้ว",
+        "message": f"เปลี่ยนรหัสผ่านเจ้าหน้าที่เป็น '{new_p}' เรียบร้อยแล้ว",
         "new_pin": new_p,
         "updated_at": now_str
     }
@@ -925,7 +925,7 @@ def reset_pin(req: ResetPinRequest):
     
     return {
         "success": True,
-        "message": "รีเซ็ตรหัสผ่านโมเดอเรเตอร์กลับเป็น '9999' เรียบร้อยแล้ว",
+        "message": "รีเซ็ตรหัสผ่านเจ้าหน้าที่กลับเป็น '9999' เรียบร้อยแล้ว",
         "mod_pin": "9999",
         "updated_at": now_str
     }

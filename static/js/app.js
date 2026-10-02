@@ -2014,7 +2014,7 @@ async function submitChangePin(e) {
 }
 
 async function resetModPinToDefault() {
-    if (!confirm("ต้องการรีเซ็ตรหัส PIN ของโมเดอเรเตอร์กลับเป็น '9999' หรือไม่?")) {
+    if (!confirm("ต้องการรีเซ็ตรหัส PIN เจ้าหน้าที่กลับเป็น '9999' หรือไม่?")) {
         return;
     }
     try {
@@ -2545,7 +2545,7 @@ async function submitMaintenance(event) {
             cost: cost,
             service_center: center,
             description: desc,
-            reporter_name: "โม (ธุรการ)",
+            reporter_name: "เจ้าหน้าที่ธุรการ",
             status: "completed"
         };
 

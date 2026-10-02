@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.9.1">
+    <link rel="stylesheet" href="/css/style.css?v=2.9.2">
 </head>
 <body>
 
@@ -23,7 +23,7 @@
             </div>
             <div class="nav-tabs">
                 <button class="nav-tab-btn active" id="tab-driver-btn" onclick="switchTab('driver')">📱 หน้าหลัก (ผขร.)</button>
-                <button class="nav-tab-btn" id="tab-moderator-btn" onclick="switchTab('moderator')">👩‍💼 แดชบอร์ดเจ้าหน้าที่ (โม)</button>
+                <button class="nav-tab-btn" id="tab-moderator-btn" onclick="switchTab('moderator')">👩‍💼 แดชบอร์ดเจ้าหน้าที่</button>
                 <button class="nav-tab-btn" id="btn-admin-settings" onclick="openSettingsModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04); color: var(--ink); border: 1px solid rgba(0,0,0,0.06);">
                     <span>⚙️</span>
                     <span>เชื่อมต่อ Google Drive</span>
@@ -983,14 +983,14 @@
         </div>
     </div>
 
-    <!-- MODAL: PIN AUTHENTICATION (สำหรับเข้าหน้าโมเดอเรเตอร์) -->
+    <!-- MODAL: PIN AUTHENTICATION (สำหรับเข้าหน้าเจ้าหน้าที่) -->
     <div class="modal-overlay" id="modal-mod-pin-auth">
         <div class="modal-card" style="max-width: 380px; text-align: center; padding: 24px 20px;">
             <div style="width: 54px; height: 54px; margin: 0 auto 10px; background: linear-gradient(135deg, rgba(37,99,235,0.12), rgba(30,58,138,0.2)); border: 1px solid rgba(37,99,235,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.7rem;">
                 🔒
             </div>
             <h3 style="font-size: 1.2rem; font-weight: 700; color: #0f172a; margin-bottom: 4px;">ระบบความปลอดภัย</h3>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">กรุณากรอกรหัส PIN เพื่อเข้าสู่ศูนย์สั่งการ (โมเดอเรเตอร์)</p>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 16px;">กรุณากรอกรหัส PIN เพื่อเข้าสู่ศูนย์สั่งการเจ้าหน้าที่</p>
             
             <form id="form-mod-pin-auth" onsubmit="submitPinAuth(event)">
                 <div style="margin-bottom: 14px;">
@@ -1045,7 +1045,7 @@
                     <span style="font-size: 0.78rem; background: #92400e; color: white; padding: 2px 7px; border-radius: 4px; font-weight: 600;">Master PIN: 2424</span>
                 </div>
                 <div style="font-size: 0.88rem; color: #78350f; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                    <span>รหัส PIN ของโมเดอเรเตอร์ปัจจุบัน:</span>
+                    <span>รหัส PIN เจ้าหน้าที่ปัจจุบัน:</span>
                     <strong id="vault-current-mod-pin" style="font-size: 1.15rem; color: #1e293b; background: white; padding: 2px 8px; border-radius: 4px; border: 1px solid #cbd5e1; letter-spacing: 2px;">9999</strong>
                 </div>
                 <div style="font-size: 0.76rem; color: #b45309;" id="vault-last-updated-text">
@@ -1053,7 +1053,7 @@
                 </div>
                 <div style="margin-top: 8px;">
                     <button type="button" class="chip-btn" onclick="resetModPinToDefault()" style="background: white; border-color: #f59e0b; color: #92400e; font-weight: 600; font-size: 0.8rem; width: 100%; justify-content: center; padding: 6px 8px;">
-                        🔄 รีเซ็ตรหัสโมกลับเป็น 9999 ทันที
+                        🔄 รีเซ็ตรหัส PIN กลับเป็น 9999 ทันที
                     </button>
                 </div>
             </div>
@@ -1160,6 +1160,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.9.1"></script>
+    <script src="/js/app.js?v=2.9.2"></script>
 </body>
 </html>
