@@ -286,22 +286,22 @@ function renderHistoryTable() {
         return `
             <tr>
                 <td><strong>#${trip.trip_number || '-'}</strong></td>
-                <td>
-                    <div><strong>${trip.depart_date}</strong></div>
+                <td style="white-space: nowrap;">
+                    <div><strong>${formatForm4Date(trip.depart_date)}</strong></div>
                     <small style="color:#64748b;">ออก: ${trip.depart_time} น.</small>
                 </td>
                 <td><strong>${trip.license_plate}</strong><br><small style="color:#64748b;">${trip.driver_nickname || trip.driver_name}</small></td>
                 <td>${trip.destination}</td>
                 <td>${trip.approver || '-'}</td>
-                <td>
+                <td style="white-space: nowrap;">
                     ${isCompleted ? `
-                        <div>${trip.arrive_date} (${trip.arrive_time} น.)</div>
-                        <small style="color:#059669; font-weight:600;">+${(trip.distance_km || 0).toLocaleString()} กม.</small>
+                        <div><strong>${formatForm4Date(trip.arrive_date)}</strong></div>
+                        <small style="color:#64748b;">ถึง: ${trip.arrive_time} น. <span style="color:#059669; font-weight:700;">(+${(trip.distance_km || 0).toLocaleString()} กม.)</span></small>
                     ` : `<span class="badge badge-warning">กำลังเดินทาง</span>`}
                 </td>
-                <td>
-                    <div>ไมล์ออก: ${trip.depart_mileage?.toLocaleString() || '-'}</div>
-                    <div>ไมล์กลับ: ${trip.arrive_mileage?.toLocaleString() || '-'}</div>
+                <td style="white-space: nowrap;">
+                    <div>ออก: <strong>${trip.depart_mileage?.toLocaleString() || '-'}</strong></div>
+                    <div>กลับ: <strong>${trip.arrive_mileage?.toLocaleString() || '-'}</strong></div>
                 </td>
                 <td>
                     ${trip.fuel_liters ? `<span style="color:#d97706; font-weight:600;">⛽ ${trip.fuel_liters} ลิตร</span>` : '-'}
@@ -793,6 +793,24 @@ async function fetchForm4Data() {
     return await res.json();
 }
 
+function formatForm4Date(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+            const y = parseInt(parts[0]);
+            const m = parseInt(parts[1]);
+            const d = parseInt(parts[2]);
+            const yBe = y + 543;
+            const shortY = String(yBe).slice(-2); // e.g. 69
+            return `${d}/${m}/${shortY}`; // e.g. 2/10/69
+        }
+        return dateStr;
+    } catch (e) {
+        return dateStr;
+    }
+}
+
 function populateForm4DOM(data) {
     document.getElementById("print-plate").innerText = data.license_plate;
     document.getElementById("print-prev-month").innerText = data.prev_month_label || data.month_label;
@@ -806,19 +824,19 @@ function populateForm4DOM(data) {
         const t = data.trips[i] || {};
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td style="height:24px;">${t.trip_number || (i < data.trips.length ? i + 1 : '')}</td>
-            <td>${t.depart_date || ''}</td>
-            <td>${t.depart_time || ''}</td>
-            <td>${t.depart_mileage ? t.depart_mileage.toLocaleString() : ''}</td>
-            <td>${t.approver || ''}</td>
-            <td style="text-align:left; padding-left: 4px;">${t.destination || ''}</td>
-            <td>${t.arrive_date || ''}</td>
-            <td>${t.arrive_time || ''}</td>
-            <td>${t.distance_km ? t.distance_km.toLocaleString() : ''}</td>
-            <td>${t.arrive_mileage ? t.arrive_mileage.toLocaleString() : ''}</td>
-            <td>${t.driver_name || ''}</td>
-            <td>${t.fuel_liters ? t.fuel_liters : ''}</td>
-            <td>${t.fuel_authorizer || ''}</td>
+            <td style="height:22px;">${t.trip_number || (i < data.trips.length ? i + 1 : '')}</td>
+            <td style="white-space: nowrap; font-size: 10pt;">${formatForm4Date(t.depart_date)}</td>
+            <td style="white-space: nowrap; font-size: 10pt;">${t.depart_time || ''}</td>
+            <td style="white-space: nowrap; font-size: 10.5pt; font-weight: 600;">${t.depart_mileage ? t.depart_mileage.toLocaleString() : ''}</td>
+            <td style="font-size: 10pt;">${t.approver || ''}</td>
+            <td style="text-align:left; padding-left: 5px; font-size: 10pt; line-height: 1.2;">${t.destination || ''}</td>
+            <td style="white-space: nowrap; font-size: 10pt;">${formatForm4Date(t.arrive_date)}</td>
+            <td style="white-space: nowrap; font-size: 10pt;">${t.arrive_time || ''}</td>
+            <td style="white-space: nowrap; font-size: 10.5pt;">${t.distance_km ? t.distance_km.toLocaleString() : ''}</td>
+            <td style="white-space: nowrap; font-size: 10.5pt; font-weight: 600;">${t.arrive_mileage ? t.arrive_mileage.toLocaleString() : ''}</td>
+            <td style="font-size: 10pt;">${t.driver_name || ''}</td>
+            <td style="white-space: nowrap; font-size: 10pt;">${t.fuel_liters ? t.fuel_liters : ''}</td>
+            <td style="font-size: 10pt;">${t.fuel_authorizer || ''}</td>
         `;
         tbody.appendChild(tr);
     }
