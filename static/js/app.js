@@ -113,12 +113,12 @@ function renderDriversGrid() {
         card.className = `driver-card ${isSelected ? 'selected' : ''}`;
         card.onclick = () => selectDriver(driver.id);
         
-        const initials = driver.nickname ? driver.nickname.charAt(0) : driver.name.charAt(0);
+        const initials = driver.name.charAt(0);
         
         card.innerHTML = `
             <div class="driver-avatar" style="background: ${driver.avatar_color || '#2563eb'}">${initials}</div>
-            <div class="driver-name" style="font-size: 1rem; font-weight: 700;">${driver.nickname || driver.name}</div>
-            <div class="driver-nick" style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${driver.name}</div>
+            <div class="driver-name" style="font-size: 0.95rem; font-weight: 700;">${driver.name}</div>
+            <div class="driver-nick" style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">พนักงานขับรถ</div>
         `;
         container.appendChild(card);
     });
@@ -127,7 +127,7 @@ function renderDriversGrid() {
     const editDriverSelect = document.getElementById("edit-trip-driver");
     if (editDriverSelect) {
         editDriverSelect.innerHTML = appState.drivers.map(d => 
-            `<option value="${d.id}">${d.nickname ? `${d.nickname} (${d.name})` : d.name}</option>`
+            `<option value="${d.id}">${d.name}</option>`
         ).join("");
     }
 }
@@ -162,7 +162,7 @@ function updateTopVehicleBanner() {
     
     if (driver) {
         const topDriverElem = document.getElementById("top-driver-name");
-        if (topDriverElem) topDriverElem.innerText = `${driver.nickname || driver.name} (${driver.name})`;
+        if (topDriverElem) topDriverElem.innerText = driver.name;
     }
     
     if (vehicle) {
@@ -260,7 +260,7 @@ function renderActiveTrips() {
     container.innerHTML = appState.activeTrips.map(trip => `
         <div class="active-trip-item">
             <div class="active-trip-info">
-                <div class="active-trip-plate">🚗 ${trip.license_plate} (${trip.driver_nickname || trip.driver_name})</div>
+                <div class="active-trip-plate">🚗 ${trip.license_plate} (${trip.driver_name})</div>
                 <div class="active-trip-desc">
                     📍 <strong>ไป:</strong> ${trip.destination} | ออก: ${trip.depart_time} น. (ไมล์: ${trip.depart_mileage.toLocaleString()})
                 </div>
@@ -290,7 +290,7 @@ function renderHistoryTable() {
                     <div><strong>${formatForm4Date(trip.depart_date)}</strong></div>
                     <small style="color:#64748b;">ออก: ${trip.depart_time} น.</small>
                 </td>
-                <td><strong>${trip.license_plate}</strong><br><small style="color:#64748b;">${trip.driver_nickname || trip.driver_name}</small></td>
+                <td><strong>${trip.license_plate}</strong><br><small style="color:#64748b;">${trip.driver_name}</small></td>
                 <td>${trip.destination}</td>
                 <td>${trip.approver || '-'}</td>
                 <td style="white-space: nowrap;">
@@ -367,7 +367,7 @@ function openArriveModal(tripId = null) {
     const select = document.getElementById("arrive-trip-select");
     if (select) {
         select.innerHTML = appState.activeTrips.map(t => 
-            `<option value="${t.id}">🚗 ${t.license_plate} (${t.driver_nickname || t.driver_name}) ➔ ${t.destination} (ออก ${t.depart_time} น.)</option>`
+            `<option value="${t.id}">🚗 ${t.license_plate} (${t.driver_name}) ➔ ${t.destination} (ออก ${t.depart_time} น.)</option>`
         ).join("");
     }
 
@@ -405,7 +405,7 @@ function selectArriveTrip(tripId) {
     if (trip) {
         document.getElementById("arrive-trip-info").innerHTML = `
             <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
-                🚗 <strong>รถทะเบียน:</strong> ${trip.license_plate} (${trip.driver_nickname || trip.driver_name})
+                🚗 <strong>รถทะเบียน:</strong> ${trip.license_plate} (${trip.driver_name})
             </div>
             <div style="color: #475569; font-size: 0.88rem;">
                 📍 <strong>สถานที่ไป:</strong> ${trip.destination} | ⏰ <strong>เวลาออก:</strong> ${trip.depart_time} น. (${trip.depart_date})
