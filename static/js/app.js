@@ -849,15 +849,24 @@ async function downloadForm4Image() {
         const printArea = document.getElementById("print-area");
         printArea.classList.add("active-preview");
 
-        // Wait brief tick for font rendering
-        await new Promise(r => setTimeout(r, 100));
+        const pageElem = printArea.querySelector(".form4-page");
+        pageElem.style.width = "1122px";
+        pageElem.style.maxWidth = "1122px";
 
-        const canvas = await html2canvas(printArea.querySelector(".form4-page"), {
-            scale: 2, // High resolution crisp image
+        // Wait brief tick for font and images to render completely
+        await new Promise(r => setTimeout(r, 200));
+
+        const canvas = await html2canvas(pageElem, {
+            scale: 2, // High resolution crisp image (2244px wide A4 landscape)
             useCORS: true,
-            backgroundColor: "#ffffff"
+            allowTaint: true,
+            backgroundColor: "#ffffff",
+            width: 1122,
+            windowWidth: 1200
         });
 
+        pageElem.style.width = "";
+        pageElem.style.maxWidth = "";
         printArea.classList.remove("active-preview");
 
         // Download PNG
