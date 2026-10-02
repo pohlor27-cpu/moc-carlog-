@@ -2202,7 +2202,18 @@ function renderModeratorRings(vehicleStats, summary) {
     const legend = document.getElementById("moderator-rings-legend");
     if (!container || !legend) return;
 
-    const ringColors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"];
+    // Authentic Apple Watch / Fitness Activity Rings Palette:
+    // 1. Move Red: #FA114F (Track: rgba(250, 17, 79, 0.2))
+    // 2. Exercise Neon Green: #A8FF00 (Track: rgba(168, 255, 0, 0.2))
+    // 3. Stand Cyan: #00F0FF (Track: rgba(0, 240, 255, 0.2))
+    // 4. Mindful Violet: #BF5AF2 (Track: rgba(191, 90, 242, 0.2))
+    const appleRings = [
+        { color: "#FA114F", track: "rgba(250, 17, 79, 0.18)", name: "คันที่ 1" },
+        { color: "#A8FF00", track: "rgba(168, 255, 0, 0.18)", name: "คันที่ 2" },
+        { color: "#00F0FF", track: "rgba(0, 240, 255, 0.18)", name: "คันที่ 3" },
+        { color: "#BF5AF2", track: "rgba(191, 90, 242, 0.18)", name: "คันที่ 4" }
+    ];
+
     const totalDist = summary.total_distance_km || 1; // avoid / 0
 
     // Concentric Ring Radii
@@ -2215,32 +2226,33 @@ function renderModeratorRings(vehicleStats, summary) {
     let legendHtml = "";
 
     vehicleStats.forEach((vs, idx) => {
-        const color = ringColors[idx % ringColors.length];
+        const ringConfig = appleRings[idx % appleRings.length];
         const r = radii[idx] || (36 - idx * 10);
         const circumference = 2 * Math.PI * r;
         const vDist = vs.distance_km || 0;
         const percent = Math.min(1, vDist / totalDist);
         const offset = circumference * (1 - percent);
 
-        // Background Track
+        // Background Track with Apple dark-tinted track color
         svgCirclesBg += `
-            <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="${strokeWidth}" stroke-linecap="round" />
+            <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="${ringConfig.track}" stroke-width="${strokeWidth}" stroke-linecap="round" />
         `;
 
-        // Filled Glowing Ring
+        // Filled Glowing Apple Ring
         svgCirclesFill += `
             <circle cx="${center}" cy="${center}" r="${r}" fill="none"
-                stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"
+                stroke="${ringConfig.color}" stroke-width="${strokeWidth}" stroke-linecap="round"
                 stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+                filter="drop-shadow(0 0 4px ${ringConfig.color}88)"
                 transform="rotate(-90 ${center} ${center})" />
         `;
 
         legendHtml += `
             <div class="ring-legend-item">
-                <div class="ring-legend-dot" style="background: ${color};"></div>
+                <div class="ring-legend-dot" style="background: ${ringConfig.color}; box-shadow: 0 0 6px ${ringConfig.color}aa;"></div>
                 <div style="line-height: 1.2;">
-                    <strong style="color: white; font-size: 0.82rem;">${escapeHtml(vs.license_plate)}</strong>
-                    <div style="font-size: 0.74rem; color: #94a3b8;">${vDist.toLocaleString()} กม. (${Math.round(percent * 100)}%)</div>
+                    <strong style="color: #ffffff; font-size: 0.82rem; letter-spacing: -0.01em;">${escapeHtml(vs.license_plate)}</strong>
+                    <div style="font-size: 0.74rem; color: #86868b;">${vDist.toLocaleString()} กม. (${Math.round(percent * 100)}%)</div>
                 </div>
             </div>
         `;
@@ -2250,8 +2262,8 @@ function renderModeratorRings(vehicleStats, summary) {
         <svg width="220" height="220" viewBox="0 0 220 220">
             ${svgCirclesBg}
             ${svgCirclesFill}
-            <text x="${center}" y="${center - 6}" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="'Prompt', sans-serif">ระยะทางรวม</text>
-            <text x="${center}" y="${center + 16}" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="bold" font-family="'Prompt', sans-serif">${(summary.total_distance_km || 0).toLocaleString()} <tspan font-size="10" font-weight="normal">กม.</tspan></text>
+            <text x="${center}" y="${center - 6}" text-anchor="middle" fill="#86868b" font-size="11" font-weight="500" font-family="-apple-system, BlinkMacSystemFont, sans-serif">ระยะทางรวม</text>
+            <text x="${center}" y="${center + 16}" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="700" letter-spacing="-0.02em" font-family="-apple-system, BlinkMacSystemFont, monospace">${(summary.total_distance_km || 0).toLocaleString()} <tspan font-size="10" font-weight="400" fill="#86868b">กม.</tspan></text>
         </svg>
     `;
 

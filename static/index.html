@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.9.2">
+    <link rel="stylesheet" href="/css/style.css?v=2.9.3">
 </head>
 <body>
 
@@ -24,10 +24,6 @@
             <div class="nav-tabs">
                 <button class="nav-tab-btn active" id="tab-driver-btn" onclick="switchTab('driver')">📱 หน้าหลัก (ผขร.)</button>
                 <button class="nav-tab-btn" id="tab-moderator-btn" onclick="switchTab('moderator')">👩‍💼 แดชบอร์ดเจ้าหน้าที่</button>
-                <button class="nav-tab-btn" id="btn-admin-settings" onclick="openSettingsModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.04); color: var(--ink); border: 1px solid rgba(0,0,0,0.06);">
-                    <span>⚙️</span>
-                    <span>เชื่อมต่อ Google Drive</span>
-                </button>
             </div>
         </div>
     </header>
@@ -1051,9 +1047,12 @@
                 <div style="font-size: 0.76rem; color: #b45309;" id="vault-last-updated-text">
                     อัปเดตล่าสุด: ค่าเริ่มต้น
                 </div>
-                <div style="margin-top: 8px;">
-                    <button type="button" class="chip-btn" onclick="resetModPinToDefault()" style="background: white; border-color: #f59e0b; color: #92400e; font-weight: 600; font-size: 0.8rem; width: 100%; justify-content: center; padding: 6px 8px;">
+                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <button type="button" class="chip-btn" onclick="resetModPinToDefault()" style="background: white; border-color: #f59e0b; color: #92400e; font-weight: 600; font-size: 0.8rem; width: 100%; justify-content: center; padding: 7px 8px;">
                         🔄 รีเซ็ตรหัส PIN กลับเป็น 9999 ทันที
+                    </button>
+                    <button type="button" class="chip-btn" onclick="closePinManageModal(); openSettingsModal();" style="background: #1e293b; border-color: #0f172a; color: white; font-weight: 600; font-size: 0.82rem; width: 100%; justify-content: center; padding: 8px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                        ⚙️ ตั้งค่าระบบ & เชื่อมต่อ Google Drive (เฉพาะพี่ป๋อ)
                     </button>
                 </div>
             </div>
@@ -1160,6 +1159,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.9.2"></script>
+    <script src="/js/app.js?v=2.9.3"></script>
 </body>
 </html>
