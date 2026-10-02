@@ -39,9 +39,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loadInitialData() {
+    updateOfflineBadgeUI();
     await Promise.all([loadDrivers(), loadVehicles()]);
     await loadActiveTrips();
     await loadHistoryTrips();
+    syncOfflineQueue();
 }
 
 // ----------------- Data Loaders -----------------
@@ -552,19 +554,30 @@ async function submitManualTrip(e) {
     btn.disabled = true;
     btn.innerText = "กำลังบันทึก...";
 
+    const payloadObj = {
+        vehicle_id: document.getElementById("manual-vehicle").value,
+        driver_id: document.getElementById("manual-driver")?.value || appState.selectedDriverId || 1,
+        depart_date: document.getElementById("manual-depart-date").value,
+        depart_time: document.getElementById("manual-depart-time").value,
+        depart_mileage: document.getElementById("manual-depart-mileage").value,
+        destination: document.getElementById("manual-destination").value,
+        approver: document.getElementById("manual-approver").value,
+        arrive_date: document.getElementById("manual-arrive-date").value,
+        arrive_time: document.getElementById("manual-arrive-time").value,
+        arrive_mileage: document.getElementById("manual-arrive-mileage").value,
+        fuel_liters: document.getElementById("manual-fuel-liters").value || "0",
+        fuel_authorizer: document.getElementById("manual-fuel-authorizer").value || ""
+    };
+
+    if (!navigator.onLine) {
+        saveOfflineTrip('manual', payloadObj);
+        btn.disabled = false;
+        btn.innerText = "💾 บันทึกลงตารางทันที";
+        return;
+    }
+
     const formData = new FormData();
-    formData.append("vehicle_id", document.getElementById("manual-vehicle").value);
-    formData.append("driver_id", document.getElementById("manual-driver")?.value || appState.selectedDriverId || 1);
-    formData.append("depart_date", document.getElementById("manual-depart-date").value);
-    formData.append("depart_time", document.getElementById("manual-depart-time").value);
-    formData.append("depart_mileage", document.getElementById("manual-depart-mileage").value);
-    formData.append("destination", document.getElementById("manual-destination").value);
-    formData.append("approver", document.getElementById("manual-approver").value);
-    formData.append("arrive_date", document.getElementById("manual-arrive-date").value);
-    formData.append("arrive_time", document.getElementById("manual-arrive-time").value);
-    formData.append("arrive_mileage", document.getElementById("manual-arrive-mileage").value);
-    formData.append("fuel_liters", document.getElementById("manual-fuel-liters").value || "0");
-    formData.append("fuel_authorizer", document.getElementById("manual-fuel-authorizer").value || "");
+    for (const k in payloadObj) formData.append(k, payloadObj[k]);
 
     try {
         const res = await fetch("/api/trips/manual", {
@@ -576,9 +589,11 @@ async function submitManualTrip(e) {
             closeManualModal();
             await loadInitialData();
             alert(`บันทึกข้อมูลเรียบร้อยแล้วครับ! (ระยะทาง ${result.distance_km} กม.)`);
+        } else {
+            alert("⚠️ เกิดข้อผิดพลาด: " + (result.detail || 'ไม่สามารถบันทึกได้'));
         }
     } catch (e) {
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+        saveOfflineTrip('manual', payloadObj);
     } finally {
         btn.disabled = false;
         btn.innerText = "💾 บันทึกลงตารางทันที";
@@ -795,15 +810,25 @@ async function submitDeparture(e) {
     submitBtn.disabled = true;
     submitBtn.innerText = "กำลังบันทึก...";
 
+    const payloadObj = {
+        vehicle_id: document.getElementById("depart-vehicle").value,
+        driver_id: document.getElementById("depart-driver")?.value || appState.selectedDriverId || 1,
+        depart_date: document.getElementById("depart-date").value,
+        depart_time: document.getElementById("depart-time").value,
+        depart_mileage: document.getElementById("depart-mileage").value,
+        destination: document.getElementById("depart-destination").value,
+        approver: document.getElementById("depart-approver").value
+    };
+
+    if (!navigator.onLine) {
+        saveOfflineTrip('depart', payloadObj);
+        submitBtn.disabled = false;
+        submitBtn.innerText = "บันทึกเวลาออก";
+        return;
+    }
+
     const formData = new FormData();
-    formData.append("vehicle_id", document.getElementById("depart-vehicle").value);
-    formData.append("driver_id", document.getElementById("depart-driver")?.value || appState.selectedDriverId || 1);
-    formData.append("depart_date", document.getElementById("depart-date").value);
-    formData.append("depart_time", document.getElementById("depart-time").value);
-    formData.append("depart_mileage", document.getElementById("depart-mileage").value);
-    formData.append("destination", document.getElementById("depart-destination").value);
-    formData.append("approver", document.getElementById("depart-approver").value);
-    
+    for (const k in payloadObj) formData.append(k, payloadObj[k]);
     if (appState.departImageFile) {
         formData.append("image", appState.departImageFile);
     }
@@ -819,9 +844,11 @@ async function submitDeparture(e) {
             closeDepartModal();
             await loadInitialData();
             alert("บันทึกเวลาออกสำเร็จเรียบร้อยครับ!");
+        } else {
+            alert(`⚠️ เกิดข้อผิดพลาด: ${result.detail || 'ไม่สามารถบันทึกได้'}`);
         }
     } catch (e) {
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+        saveOfflineTrip('depart', payloadObj);
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "บันทึกเวลาออก";
@@ -839,13 +866,26 @@ async function submitArrival(e) {
     submitBtn.disabled = true;
     submitBtn.innerText = "กำลังบันทึก...";
 
+    const payloadObj = {
+        trip_id: appState.currentArriveTripId,
+        arrive_date: document.getElementById("arrive-date").value,
+        arrive_time: document.getElementById("arrive-time").value,
+        arrive_mileage: document.getElementById("arrive-mileage").value,
+        fuel_liters: document.getElementById("arrive-fuel-liters").value || "0",
+        fuel_authorizer: document.getElementById("arrive-fuel-authorizer").value || ""
+    };
+
+    if (!navigator.onLine) {
+        saveOfflineTrip('arrive', payloadObj);
+        submitBtn.disabled = false;
+        submitBtn.innerText = "💾 บันทึกเวลากลับ";
+        return;
+    }
+
     const formData = new FormData();
-    formData.append("arrive_date", document.getElementById("arrive-date").value);
-    formData.append("arrive_time", document.getElementById("arrive-time").value);
-    formData.append("arrive_mileage", document.getElementById("arrive-mileage").value);
-    formData.append("fuel_liters", document.getElementById("arrive-fuel-liters").value || "0");
-    formData.append("fuel_authorizer", document.getElementById("arrive-fuel-authorizer").value || "");
-    
+    for (const k in payloadObj) {
+        if (k !== 'trip_id') formData.append(k, payloadObj[k]);
+    }
     if (appState.arriveImageFile) {
         formData.append("image", appState.arriveImageFile);
     }
@@ -863,7 +903,6 @@ async function submitArrival(e) {
             closeArriveModal();
             await loadInitialData();
             
-            // Check if user wants to continue with next trip immediately (Continuous trip in the day)
             const cont = confirm(`✅ บันทึกเวลากลับสำเร็จเรียบร้อยครับ!\n• ระยะทางรอบนี้: ${distance.toLocaleString()} กม.\n• เลขไมล์สิ้นสุด: ${recordedMileage.toLocaleString()} กม.\n\n👉 มีการใช้รถต่อเนื่องในรอบวัน ต้องการเปิด 'บันทึกเวลาออก' สำหรับเที่ยวถัดไปต่อทันทีเลยหรือไม่ครับ?`);
             if (cont) {
                 openDepartModal();
@@ -872,7 +911,7 @@ async function submitArrival(e) {
             alert(`⚠️ เกิดข้อผิดพลาด: ${result.detail || result.message || 'ไม่สามารถบันทึกได้'}`);
         }
     } catch (e) {
-        alert("⚠️ เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+        saveOfflineTrip('arrive', payloadObj);
     } finally {
         submitBtn.disabled = false;
         submitBtn.innerText = "💾 บันทึกเวลากลับ";
@@ -1294,6 +1333,14 @@ function initEventListeners() {
     }
 
     document.getElementById("filter-vehicle")?.addEventListener("change", loadHistoryTrips);
+
+    // Network status listeners for automatic offline sync
+    window.addEventListener("online", () => {
+        syncOfflineQueue();
+    });
+    window.addEventListener("offline", () => {
+        updateOfflineBadgeUI();
+    });
 }
 
 // ----------------- Edit Trip Modal Handlers -----------------
@@ -1520,5 +1567,146 @@ async function copyAppsScriptCode() {
         }
     } catch (e) {
         alert("ไม่สามารถคัดลอกโค้ดได้: " + e.message);
+    }
+}
+
+// ----------------- Offline Storage & Auto-Sync Engine (พื้นที่อับสัญญาณ) -----------------
+
+function getOfflineQueue() {
+    try {
+        const raw = localStorage.getItem("moc_offline_queue");
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveOfflineQueue(queue) {
+    localStorage.setItem("moc_offline_queue", JSON.stringify(queue));
+    updateOfflineBadgeUI();
+}
+
+function saveOfflineTrip(type, payload) {
+    const queue = getOfflineQueue();
+    const item = {
+        queue_id: Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+        type: type, // 'depart', 'arrive', 'manual'
+        payload: payload,
+        created_at: new Date().toISOString()
+    };
+    queue.push(item);
+    saveOfflineQueue(queue);
+    
+    if (type === 'depart') {
+        closeDepartModal();
+    } else if (type === 'arrive') {
+        closeArriveModal();
+    } else if (type === 'manual') {
+        closeManualModal();
+    }
+
+    alert(`📶 บันทึกข้อมูลลงในเครื่องเรียบร้อยแล้วครับ! (อยู่ในโหมดออฟไลน์ / ไม่มีสัญญาณเน็ต)\n\n👉 ระบบจะอัปโหลดขึ้นเซิร์ฟเวอร์และ Google Sheets ให้อัตโนมัติทันทีที่มือถือจับสัญญาณเน็ตได้ และลบข้อมูลออกจากเครื่องทันทีครับ`);
+}
+
+function updateOfflineBadgeUI() {
+    const queue = getOfflineQueue();
+    let badge = document.getElementById("offline-queue-badge");
+    if (!badge) {
+        const main = document.querySelector(".main-content");
+        if (main) {
+            badge = document.createElement("div");
+            badge.id = "offline-queue-badge";
+            badge.style.cssText = "background: #fef3c7; border: 1.5px solid #f59e0b; color: #92400e; padding: 10px 16px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 0.9rem; font-weight: 600; display: none; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);";
+            main.insertBefore(badge, main.firstChild);
+        }
+    }
+    
+    if (badge) {
+        if (queue.length > 0) {
+            badge.style.display = "flex";
+            badge.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">📶</span>
+                    <span>มีข้อมูลบันทึกรอส่งขึ้นเซิร์ฟเวอร์: <strong>${queue.length} รายการ</strong> (จะอัปโหลดอัตโนมัติเมื่อมีสัญญาณเน็ต)</span>
+                </div>
+                <button type="button" onclick="syncOfflineQueue()" style="background: #b45309; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 700; cursor: pointer;">
+                    🚀 ลองส่งตอนนี้
+                </button>
+            `;
+        } else {
+            badge.style.display = "none";
+        }
+    }
+}
+
+let isSyncingOffline = false;
+
+async function syncOfflineQueue() {
+    if (isSyncingOffline) return;
+    if (!navigator.onLine) {
+        updateOfflineBadgeUI();
+        return;
+    }
+    
+    const queue = getOfflineQueue();
+    if (queue.length === 0) {
+        updateOfflineBadgeUI();
+        return;
+    }
+
+    isSyncingOffline = true;
+    let syncedCount = 0;
+    const remainingQueue = [];
+
+    for (let i = 0; i < queue.length; i++) {
+        const item = queue[i];
+        let success = false;
+        
+        try {
+            const formData = new FormData();
+            for (const key in item.payload) {
+                if (key !== 'trip_id' && item.payload[key] !== null && item.payload[key] !== undefined) {
+                    formData.append(key, item.payload[key]);
+                }
+            }
+
+            let url = "";
+            let method = "POST";
+            if (item.type === 'depart') {
+                url = "/api/trips/depart";
+            } else if (item.type === 'arrive') {
+                url = `/api/trips/${item.payload.trip_id}/arrive`;
+            } else if (item.type === 'manual') {
+                url = "/api/trips/manual";
+            }
+
+            if (url) {
+                const res = await fetch(url, { method: method, body: formData });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        success = true;
+                        syncedCount++;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Offline sync error:", e);
+            success = false;
+        }
+
+        // If NOT successful, keep in queue to retry later; IF successful, DO NOT add (immediately wipes out from device)
+        if (!success) {
+            remainingQueue.push(item);
+        }
+    }
+
+    // Save remaining items only (all successfully uploaded items are permanently deleted from localStorage)
+    saveOfflineQueue(remainingQueue);
+    isSyncingOffline = false;
+
+    if (syncedCount > 0) {
+        await loadInitialData();
+        alert(`✅ อัปโหลดข้อมูลที่บันทึกไว้ในโหมดออฟไลน์ขึ้นระบบเรียบร้อยแล้วครับ! (จำนวน ${syncedCount} รายการ)\n\n* ข้อมูลชั่วคราวถูกลบออกจากเครื่องเรียบร้อยแล้วครับ`);
     }
 }
