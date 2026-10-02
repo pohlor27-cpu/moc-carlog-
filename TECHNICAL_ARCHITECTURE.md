@@ -113,13 +113,17 @@ erDiagram
 
 ### 4. Core Algorithms & Business Logic
 
-#### 4.1. Ad-hoc vs Primary Driver Tagging Logic (`server.py` & `app.js`)
-* **Vehicle Master Assignment:**
+#### 4.1. Ad-hoc vs Primary Driver Tagging & Foolproof Profile Coupling (`server.py` & `app.js`)
+* **Vehicle-to-Driver Master Assignment:**
   - Car 1 (`ขก 225`) ➔ Driver 1: กฤษณพัฒน์ แสงหล้า
   - Car 2 (`กอ 409`) ➔ Driver 2: ประภาส ปักกิ่งเมือง
   - Car 3 (`ขก 192`) ➔ Driver 3: ธรรมรัตน์ สุรเดชานนท์
   - Car 4 (`นจ 4648`) ➔ Driver 4: อนุพงศ์ บุญมาก
-* **Condition:**
+* **Foolproof Profile-Coupling UX:**
+  - When any driver taps a Driver Profile Card on the home dashboard, the system automatically locks the active vehicle to that driver's assigned car.
+  - In Departure & Manual modals, all vehicle dropdown options explicitly label `(รถประจำ: [ชื่อ ผขร.])` alongside current mileage.
+  - If a driver drives another vehicle (e.g. ธรรมรัตน์ drives ขก 225), they simply tap กฤษณพัฒน์'s card, click "บันทึกเวลาออก", and select their own name from the driver dropdown.
+* **Condition & Automatic Tagging:**
   ```python
   is_ad_hoc = (trip["driver_id"] != vehicle["primary_driver_id"])
   if is_ad_hoc:

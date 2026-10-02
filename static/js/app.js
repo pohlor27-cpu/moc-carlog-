@@ -192,16 +192,22 @@ function renderVehicleSelects() {
     const editSelect = document.getElementById("edit-mileage-vehicle");
     const editTripSelect = document.getElementById("edit-trip-vehicle");
     
-    const optionsHtml = appState.vehicles.map(v => 
-        `<option value="${v.id}" data-mileage="${v.current_mileage}">${v.license_plate} - ไมล์ล่าสุด: ${v.current_mileage.toLocaleString()} กม.</option>`
-    ).join("");
+    const optionsHtml = appState.vehicles.map(v => {
+        const primaryDriver = appState.drivers.find(d => d.id === (v.primary_driver_id || v.id));
+        const pName = primaryDriver ? ` (รถประจำ: ${primaryDriver.name})` : '';
+        return `<option value="${v.id}" data-mileage="${v.current_mileage}">${v.license_plate}${pName} - ไมล์: ${v.current_mileage.toLocaleString()} กม.</option>`;
+    }).join("");
 
     if (departSelect) departSelect.innerHTML = optionsHtml;
     if (manualSelect) manualSelect.innerHTML = optionsHtml;
     if (editSelect) editSelect.innerHTML = optionsHtml;
     if (editTripSelect) editTripSelect.innerHTML = optionsHtml;
     if (filterSelect) {
-        filterSelect.innerHTML = appState.vehicles.map(v => `<option value="${v.id}">${v.license_plate}</option>`).join("");
+        filterSelect.innerHTML = appState.vehicles.map(v => {
+            const primaryDriver = appState.drivers.find(d => d.id === (v.primary_driver_id || v.id));
+            const pName = primaryDriver ? ` (${primaryDriver.name})` : '';
+            return `<option value="${v.id}">${v.license_plate}${pName}</option>`;
+        }).join("");
     }
     
     updateTopVehicleBanner();
