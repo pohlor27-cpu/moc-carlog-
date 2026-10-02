@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import database
+import google_sync
 from vision_ocr import analyze_dashboard_image
 
 # Initialize DB
@@ -89,6 +90,7 @@ class SettingUpdate(BaseModel):
     gemini_api_key: Optional[str] = None
     agency_name: Optional[str] = "สำนักงานพาณิชย์จังหวัดเพชรบุรี"
     default_approver: Optional[str] = "หัวหน้ากลุ่มยุทธศาสตร์ฯ"
+    google_sheets_url: Optional[str] = None
 
 # ----------------- APIs -----------------
 
@@ -241,6 +243,12 @@ async def record_departure(
     trip_id = cursor.lastrowid
     conn.close()
 
+    # Trigger async/background sync to Google Sheets
+    try:
+        google_sync.sync_trip_to_sheets(trip_id)
+    except Exception:
+        pass
+
     return {"status": "success", "trip_id": trip_id, "trip_number": trip_count}
 
 # Manual Full Trip Entry (กรอกเองทั้งเที่ยวในครั้งเดียว)
@@ -292,6 +300,12 @@ async def record_manual_trip(
     conn.commit()
     trip_id = cursor.lastrowid
     conn.close()
+
+    # Trigger sync to Google Sheets
+    try:
+        google_sync.sync_trip_to_sheets(trip_id)
+    except Exception:
+        pass
 
     return {"status": "success", "trip_id": trip_id, "trip_number": trip_count, "distance_km": distance_km}
 
@@ -350,6 +364,12 @@ async def record_arrival(
 
     conn.commit()
     conn.close()
+
+    # Trigger sync to Google Sheets
+    try:
+        google_sync.sync_trip_to_sheets(trip_id)
+    except Exception:
+        pass
 
     return {"status": "success", "distance_km": distance_km}
 
@@ -453,6 +473,12 @@ async def update_trip(
     conn.commit()
     conn.close()
 
+    # Trigger sync to Google Sheets
+    try:
+        google_sync.sync_trip_to_sheets(trip_id)
+    except Exception:
+        pass
+
     return {"status": "success", "trip_id": trip_id, "distance_km": distance_km}
 
 # Delete Trip
@@ -469,6 +495,13 @@ def delete_trip(trip_id: int):
         sync_vehicle_mileage(cursor, vehicle_id)
     conn.commit()
     conn.close()
+
+    # Trigger delete in Google Sheets
+    try:
+        google_sync.sync_trip_to_sheets(trip_id, action="delete")
+    except Exception:
+        pass
+
     return {"status": "success"}
 
 # Report Data specifically formatted for "แบบ 4 (บันทึกการใช้รถราชการ)"
@@ -556,11 +589,16 @@ def get_form4_report(vehicle_id: int, month: str):
 def get_settings():
     api_key = get_setting_val("gemini_api_key", "")
     masked_key = f"{api_key[:6]}...{api_key[-4:]}" if len(api_key) > 10 else ("Configured" if api_key else "")
+    gs_url = get_setting_val("google_sheets_url", "")
+    masked_gs = f"{gs_url[:20]}...{gs_url[-15:]}" if len(gs_url) > 35 else gs_url
     return {
         "gemini_api_key_set": bool(api_key),
         "gemini_api_key_masked": masked_key,
         "agency_name": get_setting_val("agency_name", "สำนักงานพาณิชย์จังหวัดเพชรบุรี"),
-        "default_approver": get_setting_val("default_approver", "หัวหน้ากลุ่มยุทธศาสตร์ฯ")
+        "default_approver": get_setting_val("default_approver", "หัวหน้ากลุ่มยุทธศาสตร์ฯ"),
+        "google_sheets_url": gs_url,
+        "google_sheets_set": bool(gs_url),
+        "google_sheets_masked": masked_gs
     }
 
 @app.post("/api/settings")
@@ -571,7 +609,27 @@ def update_settings(settings: SettingUpdate):
         set_setting_val("agency_name", settings.agency_name)
     if settings.default_approver:
         set_setting_val("default_approver", settings.default_approver)
+    if settings.google_sheets_url is not None:
+        set_setting_val("google_sheets_url", settings.google_sheets_url.strip())
     return {"status": "success"}
+
+# Google Sheets Endpoints
+@app.post("/api/google/sync-all")
+def api_google_sync_all():
+    return google_sync.full_backup_to_sheets()
+
+@app.post("/api/google/restore")
+def api_google_restore():
+    return google_sync.restore_from_sheets()
+
+@app.get("/api/google/script-code")
+def api_google_script_code():
+    script_path = os.path.join(os.path.dirname(__file__), "google_apps_script.js")
+    code = ""
+    if os.path.exists(script_path):
+        with open(script_path, "r", encoding="utf-8") as f:
+            code = f.read()
+    return {"script_code": code}
 
 # Serve uploaded images
 @app.get("/uploads/{filename}")

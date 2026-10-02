@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.5.1">
+    <link rel="stylesheet" href="/css/style.css?v=2.6.0">
 </head>
 <body>
 
@@ -23,6 +23,10 @@
             </div>
             <div class="nav-tabs">
                 <button class="nav-tab-btn active">📱 หน้าหลัก</button>
+                <button class="nav-tab-btn" onclick="openSettingsModal()" style="display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                    <span>⚙️</span>
+                    <span>เชื่อมต่อ Google Drive</span>
+                </button>
             </div>
         </div>
     </header>
@@ -668,6 +672,75 @@
         </div>
     </div>
 
+    <!-- Modal 5: ตั้งค่าระบบ & เชื่อมต่อ Google Sheets (Google Drive) -->
+    <div class="modal-overlay" id="modal-settings">
+        <div class="modal-card" style="max-width: 600px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span>⚙️</span> ตั้งค่าระบบ & เชื่อมต่อ Google Drive
+                </div>
+                <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+            </div>
+            
+            <form onsubmit="saveSettings(event)">
+                <!-- Google Sheets Sync Box -->
+                <div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1.5px solid #86efac; border-radius: var(--radius-md); padding: 16px; margin-bottom: 18px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div style="font-weight: 700; color: #166534; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                            <span>📊</span> Google Sheets ใน Google Drive (24 ชม.)
+                        </div>
+                        <span id="settings-gs-status" style="background: #e2e8f0; color: #475569; font-size: 0.78rem; font-weight: 700; padding: 4px 10px; border-radius: 999px;">⚪ ยังไม่เชื่อมต่อ</span>
+                    </div>
+                    <p style="font-size: 0.84rem; color: #374151; margin-bottom: 12px; line-height: 1.45;">
+                        เมื่อเชื่อมต่อแล้ว ทุกครั้งที่กดบันทึกในแอป ข้อมูลจะถูกเขียนลง <strong>Google Sheets ใน Google Drive ของคุณทันที</strong> แม้เครื่องเซิร์ฟเวอร์จะปิดหรือรีสตาร์ต ข้อมูลก็ไม่หาย 100%
+                    </p>
+
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label class="form-label" style="font-size: 0.88rem; color: #166534; font-weight: 700;">Google Apps Script Webhook URL</label>
+                        <input type="url" id="setting-gs-url" class="form-input" placeholder="https://script.google.com/macros/s/.../exec" style="font-size: 0.9rem;">
+                    </div>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+                        <button type="button" class="chip-btn" onclick="syncAllToGoogleSheets()" style="background: #15803d; color: white; border: none; font-weight: 600; padding: 6px 12px;">
+                            🚀 ซิงค์ข้อมูลทั้งหมดขึ้น Google Sheets ตอนนี้
+                        </button>
+                        <button type="button" class="chip-btn" onclick="restoreFromGoogleSheets()" style="background: #0284c7; color: white; border: none; font-weight: 600; padding: 6px 12px;">
+                            📥 ดึงข้อมูลจาก Google Sheets ลงแอป
+                        </button>
+                    </div>
+
+                    <!-- Instructions Dropdown -->
+                    <details style="margin-top: 14px; background: white; padding: 12px; border-radius: 8px; border: 1px solid #bbf7d0; font-size: 0.85rem;">
+                        <summary style="font-weight: 700; color: #15803d; cursor: pointer;">📖 วิธีรับ Webhook URL จาก Google Sheets (ทำครั้งเดียว 2 นาที)</summary>
+                        <ol style="margin-top: 8px; padding-left: 18px; line-height: 1.6; color: #334155;">
+                            <li>สร้าง <strong>Google Sheets</strong> ใหม่ใน Google Drive ของคุณ</li>
+                            <li>ไปที่เมนู <strong>"ส่วนขยาย" (Extensions)</strong> ➔ <strong>"Apps Script"</strong></li>
+                            <li>ลบโค้ดเดิมออกทั้งหมด แล้วกดปุ่มด้านล่างเพื่อคัดลอกโค้ดไปวางแทนที่</li>
+                            <li>กดปุ่ม <strong>"ทำให้ใช้งานได้" (Deploy)</strong> ➔ <strong>"การทำให้ใช้งานได้รายการใหม่" (New deployment)</strong></li>
+                            <li>เลือกประเภท <strong>"เว็บแอป" (Web app)</strong> และตั้งค่า <em>"ผู้มีสิทธิ์เข้าถึง" (Who has access)</em> เป็น <strong>"ทุกคน" (Anyone)</strong></li>
+                            <li>กด Deploy แล้วคัดลอก <strong>URL เว็บแอป</strong> มาวางในช่องด้านบนนี้แล้วกดบันทึก</li>
+                        </ol>
+                        <div style="margin-top: 10px;">
+                            <button type="button" class="chip-btn" onclick="copyAppsScriptCode()" style="background: #2563eb; color: white; border: none; padding: 6px 14px; font-weight: 600;">📋 กดคัดลอกโค้ด Apps Script</button>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Gemini API Key Box -->
+                <div class="form-group">
+                    <label class="form-label">🔑 Google Gemini API Key (สำหรับ AI สแกนหน้าปัดไมล์)</label>
+                    <input type="password" id="setting-gemini-key" class="form-input" placeholder="AIzaSy...">
+                    <small style="color: #64748b; font-size: 0.8rem;">* เว้นว่างไว้หากไม่ต้องการเปลี่ยนคีย์เดิม</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeSettingsModal()">ปิด</button>
+                    <button type="submit" id="btn-save-settings" class="btn-submit" style="background: #2563eb;">💾 บันทึกการตั้งค่า</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ------------------------------------------------------------- -->
     <!-- 5. TEMPLATE เอกสารราชการ: บันทึกการใช้รถราชการ (แบบ 4) สำหรับสั่งพิมพ์ -->
     <!-- ------------------------------------------------------------- -->
@@ -747,6 +820,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.5.1"></script>
+    <script src="/js/app.js?v=2.6.0"></script>
 </body>
 </html>

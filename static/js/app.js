@@ -1207,3 +1207,118 @@ async function submitEditTrip(e) {
         btn.innerText = "💾 บันทึกการแก้ไข";
     }
 }
+
+// ----------------- Settings & Google Sheets Sync -----------------
+
+async function openSettingsModal() {
+    try {
+        const res = await fetch("/api/settings");
+        const data = await res.json();
+        
+        const gsInput = document.getElementById("setting-gs-url");
+        const gsStatus = document.getElementById("settings-gs-status");
+        
+        if (gsInput) gsInput.value = data.google_sheets_url || "";
+        if (gsStatus) {
+            if (data.google_sheets_set) {
+                gsStatus.innerText = "🟢 เชื่อมต่อแล้ว";
+                gsStatus.style.background = "#dcfce7";
+                gsStatus.style.color = "#15803d";
+            } else {
+                gsStatus.innerText = "⚪ ยังไม่เชื่อมต่อ";
+                gsStatus.style.background = "#e2e8f0";
+                gsStatus.style.color = "#475569";
+            }
+        }
+        
+        document.getElementById("modal-settings").classList.add("open");
+    } catch (e) {
+        alert("ไม่สามารถโหลดข้อมูลการตั้งค่าได้: " + e.message);
+    }
+}
+
+function closeSettingsModal() {
+    document.getElementById("modal-settings").classList.remove("open");
+}
+
+async function saveSettings(e) {
+    e.preventDefault();
+    const btn = document.getElementById("btn-save-settings");
+    btn.disabled = true;
+    btn.innerText = "กำลังบันทึก...";
+
+    const payload = {
+        google_sheets_url: document.getElementById("setting-gs-url").value.trim()
+    };
+    
+    const geminiKey = document.getElementById("setting-gemini-key")?.value?.trim();
+    if (geminiKey) {
+        payload.gemini_api_key = geminiKey;
+    }
+
+    try {
+        const res = await fetch("/api/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            alert("✅ บันทึกการตั้งค่าเรียบร้อยแล้วครับ!");
+            closeSettingsModal();
+        } else {
+            alert("⚠️ ไม่สามารถบันทึกการตั้งค่าได้");
+        }
+    } catch (err) {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "💾 บันทึกการตั้งค่า";
+    }
+}
+
+async function syncAllToGoogleSheets() {
+    if (!confirm("คุณต้องการซิงค์ข้อมูลประวัติการใช้รถทั้งหมดขึ้น Google Sheets ใช่หรือไม่?")) return;
+    try {
+        const res = await fetch("/api/google/sync-all", { method: "POST" });
+        const data = await res.json();
+        if (data.status === "success") {
+            alert(`✅ ซิงค์ข้อมูลทั้งหมดสำเร็จเรียบร้อยครับ! (จำนวน ${data.count} รายการ)`);
+        } else {
+            alert(`⚠️ เกิดข้อผิดพลาด: ${data.message || 'ไม่สามารถซิงค์ได้'}`);
+        }
+    } catch (e) {
+        alert("เกิดข้อผิดพลาดในการซิงค์: " + e.message);
+    }
+}
+
+async function restoreFromGoogleSheets() {
+    if (!confirm("⚠️ การดึงข้อมูลจาก Google Sheets จะนำรายการจาก Google Sheet มาอัปเดตลงในแอป\n\nต้องการดำเนินการต่อหรือไม่ครับ?")) return;
+    try {
+        const res = await fetch("/api/google/restore", { method: "POST" });
+        const data = await res.json();
+        if (data.status === "success") {
+            await loadInitialData();
+            alert(`✅ ดึงข้อมูลสำเร็จเรียบร้อยครับ! (อัปเดต ${data.restored_count} รายการ)`);
+            closeSettingsModal();
+        } else {
+            alert(`⚠️ เกิดข้อผิดพลาด: ${data.message || 'ไม่สามารถกู้คืนได้'}`);
+        }
+    } catch (e) {
+        alert("เกิดข้อผิดพลาดในการดึงข้อมูล: " + e.message);
+    }
+}
+
+async function copyAppsScriptCode() {
+    try {
+        const res = await fetch("/api/google/script-code");
+        const data = await res.json();
+        if (data.script_code) {
+            await navigator.clipboard.writeText(data.script_code);
+            alert("📋 คัดลอกโค้ด Apps Script ลงในคลิปบอร์ดเรียบร้อยแล้วครับ!\n\n👉 นำไปวางในหน้า Google Sheets (ส่วนขยาย ➔ Apps Script) ได้เลยครับ");
+        } else {
+            alert("ไม่พบโค้ด Apps Script");
+        }
+    } catch (e) {
+        alert("ไม่สามารถคัดลอกโค้ดได้: " + e.message);
+    }
+}
