@@ -864,34 +864,64 @@ async function downloadForm4Image() {
         const data = await fetchForm4Data();
         populateForm4DOM(data);
 
+        // Create an absolute fixed offscreen render stage to guarantee 100% desktop A4 landscape width on any mobile
         const printArea = document.getElementById("print-area");
-        printArea.classList.add("active-preview");
-
-        const pageElem = printArea.querySelector(".form4-page");
-        pageElem.style.width = "1122px";
-        pageElem.style.maxWidth = "1122px";
+        const originalPage = printArea.querySelector(".form4-page");
+        
+        // Clone the form4-page
+        const clone = originalPage.cloneNode(true);
+        
+        // Wrapper container off-screen
+        const stage = document.createElement("div");
+        stage.id = "a4-image-capture-stage";
+        stage.style.position = "fixed";
+        stage.style.left = "-99999px";
+        stage.style.top = "0";
+        stage.style.width = "1280px";
+        stage.style.minWidth = "1280px";
+        stage.style.maxWidth = "1280px";
+        stage.style.height = "auto";
+        stage.style.zIndex = "-9999";
+        stage.style.backgroundColor = "#ffffff";
+        stage.style.overflow = "visible";
+        
+        // Style cloned page strictly
+        clone.style.width = "1200px";
+        clone.style.minWidth = "1200px";
+        clone.style.maxWidth = "1200px";
+        clone.style.margin = "0 auto";
+        clone.style.padding = "16px 20px";
+        clone.style.boxSizing = "border-box";
+        clone.style.backgroundColor = "#ffffff";
+        clone.style.display = "block";
+        
+        stage.appendChild(clone);
+        document.body.appendChild(stage);
 
         // Wait brief tick for font and images to render completely
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 250));
 
-        const canvas = await html2canvas(pageElem, {
-            scale: 2, // High resolution crisp image (2244px wide A4 landscape)
+        const canvas = await html2canvas(clone, {
+            scale: 2, // High resolution crisp image (2400px wide A4 landscape)
             useCORS: true,
             allowTaint: true,
             backgroundColor: "#ffffff",
-            width: 1122,
-            windowWidth: 1200
+            width: 1200,
+            windowWidth: 1280,
+            scrollX: 0,
+            scrollY: 0
         });
 
-        pageElem.style.width = "";
-        pageElem.style.maxWidth = "";
-        printArea.classList.remove("active-preview");
+        // Remove offscreen clone
+        document.body.removeChild(stage);
 
         // Download PNG
         const link = document.createElement("a");
         link.download = `แบบ4_บันทึกการใช้รถ_${data.license_plate.replace(/\s+/g, '_')}_${data.month_label.replace(/\s+/g, '_')}.png`;
         link.href = canvas.toDataURL("image/png");
         link.click();
+
+        alert("✅ เซฟรูปภาพขนาด A4 แนวนอน (ความละเอียดสูง) เรียบร้อยแล้วครับ!");
 
     } catch (e) {
         alert("ไม่สามารถเซฟเป็นรูปภาพได้: " + e.message);
