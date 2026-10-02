@@ -1936,13 +1936,13 @@ function renderModeratorRings(vehicleStats, summary) {
 
         // Background Track
         svgCirclesBg += `
-            <circle class="ring-circle-bg" cx="${center}" cy="${center}" r="${r}" stroke-width="${strokeWidth}" />
+            <circle cx="${center}" cy="${center}" r="${r}" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="${strokeWidth}" stroke-linecap="round" />
         `;
 
         // Filled Glowing Ring
         svgCirclesFill += `
-            <circle class="ring-circle-fill" cx="${center}" cy="${center}" r="${r}" 
-                stroke="${color}" stroke-width="${strokeWidth}" 
+            <circle cx="${center}" cy="${center}" r="${r}" fill="none"
+                stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round"
                 stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
                 transform="rotate(-90 ${center} ${center})" />
         `;
