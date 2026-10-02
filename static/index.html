@@ -154,21 +154,35 @@
                     <select id="depart-vehicle" class="form-select" required></select>
                 </div>
 
-                <!-- Camera / Photo Box with AI OCR -->
+                <!-- Dual Camera / Gallery Buttons & AI OCR Box -->
                 <div class="form-group">
-                    <label class="form-label">📸 ถ่ายรูปหน้าปัดไมล์รถยนต์ (AI อ่านเลขอัตโนมัติ)</label>
-                    <div class="camera-upload-box" onclick="document.getElementById('depart-photo-input').click()">
-                        <input type="file" id="depart-photo-input" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoSelected(event, 'depart')">
-                        <div id="depart-photo-placeholder">
-                            <div class="camera-icon">📷</div>
-                            <div style="font-weight: 600; color: #2563eb;">แตะเพื่อเปิดกล้องถ่ายไมล์</div>
-                            <div style="font-size: 0.8rem; color: #64748b;">หรือเลือกรูปจากเครื่อง</div>
+                    <label class="form-label">📸 รูปถ่ายหน้าปัดไมล์ (ดึงเลขไมล์ + เวลาอัตโนมัติ)</label>
+                    
+                    <!-- Hidden Inputs for Camera vs Gallery -->
+                    <input type="file" id="depart-photo-camera" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoSelected(event, 'depart')">
+                    <input type="file" id="depart-photo-gallery" accept="image/*" style="display: none;" onchange="handlePhotoSelected(event, 'depart')">
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <button type="button" onclick="document.getElementById('depart-photo-camera').click()" class="btn-submit" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 12px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span style="font-size: 1.2rem;">📷</span>
+                            <span>เปิดกล้องถ่ายไมล์</span>
+                        </button>
+                        <button type="button" onclick="document.getElementById('depart-photo-gallery').click()" class="btn-submit" style="background: linear-gradient(135deg, #64748b, #475569); padding: 12px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span style="font-size: 1.2rem;">🖼️</span>
+                            <span>เลือกจากแกลลอรี่</span>
+                        </button>
+                    </div>
+
+                    <div id="depart-photo-box" class="camera-upload-box" style="padding: 10px; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div id="depart-photo-placeholder" style="font-size: 0.85rem; color: #64748b;">
+                            ยังไม่มีรูปถ่าย (กดปุ่มด้านบนเพื่อถ่ายรูปหรือเลือกจากแกลลอรี่)
                         </div>
-                        <img id="depart-photo-preview" class="camera-preview" alt="Preview">
+                        <img id="depart-photo-preview" class="camera-preview" alt="Preview" style="display: none; max-height: 180px;">
                         <div id="depart-ai-badge" class="ai-analyzing-badge" style="display: none;"></div>
                     </div>
                 </div>
 
+                <!-- Date & Time with Quick Time Adjusters -->
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">วันที่ออก</label>
@@ -176,13 +190,32 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">เวลาที่ออก</label>
-                        <input type="time" id="depart-time" class="form-input" required>
+                        <input type="time" id="depart-time" class="form-input" required style="font-size: 1.1rem; font-weight: 700;">
                     </div>
                 </div>
+                <!-- Quick Time Buttons -->
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: -8px; margin-bottom: 14px;">
+                    <button type="button" class="chip-btn" onclick="setTimeNow('depart')">⏰ เวลาตอนนี้</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('depart', -10)">-10 นาที</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('depart', -5)">-5 นาที</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('depart', 5)">+5 นาที</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('depart', 10)">+10 นาที</button>
+                </div>
 
+                <!-- Mileage input with Quick Mileage Steppers -->
                 <div class="form-group">
-                    <label class="form-label">เลขไมล์ตอนออก (กม.)</label>
-                    <input type="number" id="depart-mileage" class="form-input" placeholder="เช่น 52904" required style="font-size: 1.15rem; font-weight: 700; color: #2563eb;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom: 0;">เลขไมล์ตอนออก (กม.)</label>
+                        <small style="color: #2563eb; font-weight: 600;">* สามารถพิมพ์แก้ไขตัวเลขเองได้</small>
+                    </div>
+                    <input type="number" id="depart-mileage" class="form-input" placeholder="เช่น 52204" required style="font-size: 1.25rem; font-weight: 800; color: #2563eb;">
+                    <!-- Quick Mileage Buttons -->
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button type="button" class="chip-btn" onclick="adjustMileage('depart', -10)">-10</button>
+                        <button type="button" class="chip-btn" onclick="adjustMileage('depart', 10)">+10</button>
+                        <button type="button" class="chip-btn" onclick="adjustMileage('depart', 50)">+50</button>
+                        <button type="button" class="chip-btn" onclick="adjustMileage('depart', 100)">+100</button>
+                    </div>
                 </div>
 
                 <!-- Destination & Quick Chips -->
@@ -222,21 +255,34 @@
                 
                 <div id="arrive-trip-info" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; margin-bottom: 16px;"></div>
 
-                <!-- Camera / Photo Box with AI OCR -->
+                <!-- Dual Camera / Gallery Buttons & AI OCR Box -->
                 <div class="form-group">
-                    <label class="form-label">📸 ถ่ายรูปหน้าปัดไมล์ตอนกลับ (AI อ่านเลขอัตโนมัติ)</label>
-                    <div class="camera-upload-box" onclick="document.getElementById('arrive-photo-input').click()">
-                        <input type="file" id="arrive-photo-input" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoSelected(event, 'arrive')">
-                        <div id="arrive-photo-placeholder">
-                            <div class="camera-icon">📷</div>
-                            <div style="font-weight: 600; color: #059669;">แตะเพื่อเปิดกล้องถ่ายไมล์ตอนกลับ</div>
-                            <div style="font-size: 0.8rem; color: #64748b;">หรือเลือกรูปจากเครื่อง</div>
+                    <label class="form-label">📸 รูปถ่ายหน้าปัดไมล์ตอนกลับ (ดึงเลขไมล์ + เวลาอัตโนมัติ)</label>
+                    
+                    <input type="file" id="arrive-photo-camera" accept="image/*" capture="environment" style="display: none;" onchange="handlePhotoSelected(event, 'arrive')">
+                    <input type="file" id="arrive-photo-gallery" accept="image/*" style="display: none;" onchange="handlePhotoSelected(event, 'arrive')">
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <button type="button" onclick="document.getElementById('arrive-photo-camera').click()" class="btn-submit" style="background: linear-gradient(135deg, #059669, #047857); padding: 12px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span style="font-size: 1.2rem;">📷</span>
+                            <span>เปิดกล้องถ่ายไมล์</span>
+                        </button>
+                        <button type="button" onclick="document.getElementById('arrive-photo-gallery').click()" class="btn-submit" style="background: linear-gradient(135deg, #64748b, #475569); padding: 12px; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <span style="font-size: 1.2rem;">🖼️</span>
+                            <span>เลือกจากแกลลอรี่</span>
+                        </button>
+                    </div>
+
+                    <div id="arrive-photo-box" class="camera-upload-box" style="padding: 10px; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div id="arrive-photo-placeholder" style="font-size: 0.85rem; color: #64748b;">
+                            ยังไม่มีรูปถ่าย (กดปุ่มด้านบนเพื่อถ่ายรูปหรือเลือกจากแกลลอรี่)
                         </div>
-                        <img id="arrive-photo-preview" class="camera-preview" alt="Preview">
+                        <img id="arrive-photo-preview" class="camera-preview" alt="Preview" style="display: none; max-height: 180px;">
                         <div id="arrive-ai-badge" class="ai-analyzing-badge" style="display: none;"></div>
                     </div>
                 </div>
 
+                <!-- Date & Time with Quick Time Adjusters -->
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">วันที่กลับถึง</label>
@@ -244,9 +290,56 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">เวลากลับถึง</label>
-                        <input type="time" id="arrive-time" class="form-input" required>
+                        <input type="time" id="arrive-time" class="form-input" required style="font-size: 1.1rem; font-weight: 700;">
                     </div>
                 </div>
+                <!-- Quick Time Buttons -->
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: -8px; margin-bottom: 14px;">
+                    <button type="button" class="chip-btn" onclick="setTimeNow('arrive')">⏰ เวลาตอนนี้</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('arrive', -10)">-10 นาที</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('arrive', -5)">-5 นาที</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('arrive', 5)">+5 นาที</button>
+                    <button type="button" class="chip-btn" onclick="adjustTime('arrive', 10)">+10 นาที</button>
+                </div>
+
+                <!-- Mileage input with Real-time Distance & Steppers -->
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">เลขไมล์ตอนกลับ (กม.)</label>
+                        <span id="calc-distance-badge" style="font-size: 0.95rem; font-weight: 800; color: #059669; background: #dcfce7; padding: 2px 10px; border-radius: 20px;"></span>
+                    </div>
+                    <input type="number" id="arrive-mileage" class="form-input" placeholder="เช่น 52250" required style="font-size: 1.25rem; font-weight: 800; color: #059669;">
+                    <!-- Quick Mileage Buttons -->
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button type="button" class="chip-btn" onclick="adjustMileage('arrive', -10)">-10</button>
+                        <button type="button" class="chip-btn" onclick="adjustMileage('arrive', 10)">+10</button>
+                        <button type="button" class="chip-btn" onclick="adjustMileage('arrive', 50)">+50</button>
+                        <button type="button" class="chip-btn" onclick="adjustMileage('arrive', 100)">+100</button>
+                    </div>
+                </div>
+
+                <!-- Fuel Refill Section -->
+                <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px;">
+                    <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 8px;">⛽ การเบิกจ่ายน้ำมันเชื้อเพลิง (ถ้ามีเติมระหว่างทาง)</div>
+                    <div class="form-row">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">จำนวน (ลิตร)</label>
+                            <input type="number" step="0.01" id="arrive-fuel-liters" class="form-input" placeholder="เช่น 45.5">
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label class="form-label">ผู้สั่งจ่ายน้ำมัน</label>
+                            <input type="text" id="arrive-fuel-authorizer" class="form-input" placeholder="เช่น พจ.เพชรบุรี">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeArriveModal()">ยกเลิก</button>
+                    <button type="submit" id="btn-arrive-submit" class="btn-submit" style="background: #059669;">💾 บันทึกเวลากลับ</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
                 <div class="form-group">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">

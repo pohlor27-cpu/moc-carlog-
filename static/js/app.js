@@ -425,16 +425,53 @@ async function submitManualTrip(e) {
     }
 }
 
+function setTimeNow(type) {
+    const input = document.getElementById(`${type}-time`);
+    if (input) input.value = getTimeNow();
+}
+
+function adjustTime(type, minutesDelta) {
+    const input = document.getElementById(`${type}-time`);
+    if (!input) return;
+    
+    let currentVal = input.value || getTimeNow();
+    let [h, m] = currentVal.split(":").map(Number);
+    let totalMins = h * 60 + m + minutesDelta;
+    
+    // Wrap within 24 hours
+    if (totalMins < 0) totalMins += 24 * 60;
+    totalMins = totalMins % (24 * 60);
+    
+    let newH = String(Math.floor(totalMins / 60)).padStart(2, '0');
+    let newM = String(totalMins % 60).padStart(2, '0');
+    input.value = `${newH}:${newM}`;
+}
+
+function adjustMileage(type, deltaKm) {
+    const input = document.getElementById(`${type}-mileage`);
+    if (!input) return;
+    
+    let currentVal = parseInt(input.value) || 0;
+    input.value = Math.max(0, currentVal + deltaKm);
+    
+    if (type === "arrive") updateDistanceCalc();
+}
+
 function resetPhotoBox(type) {
     document.getElementById(`${type}-photo-preview`).style.display = "none";
     document.getElementById(`${type}-photo-placeholder`).style.display = "block";
     document.getElementById(`${type}-ai-badge`).style.display = "none";
-    document.getElementById(`${type}-photo-input`).value = "";
+    
+    const camInput = document.getElementById(`${type}-photo-camera`);
+    const galInput = document.getElementById(`${type}-photo-gallery`);
+    if (camInput) camInput.value = "";
+    if (galInput) galInput.value = "";
+    
     if (type === "depart") appState.departImageFile = null;
     if (type === "arrive") appState.arriveImageFile = null;
 }
 
-// ----------------- Camera & AI OCR -----------------
+// ----------------- Camera & Gallery & AI OCR -----------------
 
 function handlePhotoSelected(event, type) {
     const file = event.target.files[0];
@@ -487,9 +524,19 @@ async function runAiOcr(file, type) {
 
         let detailMsg = [];
 
-        // Auto-fill mileage
+        // Auto-fill mileage into input field
         if (data.mileage) {
-            document.getElementById(`${type}-mileage`).value = data.mileage;
+            const mileageInput = document.getElementById(`${type}-mileage`);
+            mileageInput.value = data.mileage;
+            
+            // Visual highlight effect
+            mileageInput.style.transition = "all 0.3s ease";
+            mileageInput.style.backgroundColor = "#dcfce7";
+            mileageInput.style.borderColor = "#16a34a";
+            setTimeout(() => {
+                mileageInput.style.backgroundColor = "white";
+            }, 1500);
+
             detailMsg.push(`เลขไมล์: <strong>${data.mileage.toLocaleString()} กม.</strong>`);
             if (type === "arrive") updateDistanceCalc();
         }
@@ -505,7 +552,7 @@ async function runAiOcr(file, type) {
         }
 
         if (detailMsg.length > 0) {
-            badge.innerHTML = `✅ ดึงข้อมูลจากรูป: ${detailMsg.join(" | ")} ${data.date_time_source ? `(${data.date_time_source})` : ''}`;
+            badge.innerHTML = `✅ AI ดึงข้อมูลสำเร็จ: ${detailMsg.join(" | ")} ${data.date_time_source ? `(${data.date_time_source})` : ''}`;
         } else {
             badge.innerHTML = `ℹ️ ${data.note || 'กรุณาตรวจสอบหรือใส่เลขไมล์'}`;
         }
