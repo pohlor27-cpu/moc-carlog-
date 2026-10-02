@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.4.0">
+    <link rel="stylesheet" href="/css/style.css?v=2.5.0">
 </head>
 <body>
 
@@ -155,6 +155,15 @@
                 <div class="form-group">
                     <label class="form-label">เลือกรถยนต์ราชการ</label>
                     <select id="depart-vehicle" class="form-select" required></select>
+                </div>
+
+                <!-- Continuous Trip Indicator Badge -->
+                <div id="depart-continuous-badge" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 14px; align-items: flex-start; gap: 8px;">
+                    <span style="font-size: 1.25rem; line-height: 1;">🔄</span>
+                    <div>
+                        <strong style="color: #1e3a8a;">ใช้รถต่อเนื่องในรอบวัน:</strong> ยกเลขไมล์ขากลับล่าสุดมาให้แล้ว (<strong id="depart-continuous-mileage" style="color: #2563eb; font-size: 1rem;">0</strong> กม.)<br>
+                        <span style="font-size: 0.82rem; color: #475569;">* หากออกเดินทางต่อทันที ไม่ต้องถ่ายรูปหน้าปัดใหม่ สามารถเลือกสถานที่แล้วกดยืนยันได้เลย</span>
+                    </div>
                 </div>
 
                 <!-- Dual Camera / Gallery Buttons & AI OCR Box -->
@@ -738,6 +747,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.4.0"></script>
+    <script src="/js/app.js?v=2.5.0"></script>
 </body>
 </html>

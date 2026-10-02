@@ -323,9 +323,18 @@ function openDepartModal() {
     
     // Set default mileage from selected vehicle
     const vehicleSelect = document.getElementById("depart-vehicle");
+    let mileage = 0;
     if (vehicleSelect && vehicleSelect.selectedOptions[0]) {
-        const mileage = vehicleSelect.selectedOptions[0].getAttribute("data-mileage") || 0;
+        mileage = vehicleSelect.selectedOptions[0].getAttribute("data-mileage") || 0;
         document.getElementById("depart-mileage").value = mileage;
+    }
+    
+    // Show continuous trip badge if mileage exists
+    const badge = document.getElementById("depart-continuous-badge");
+    const badgeMileage = document.getElementById("depart-continuous-mileage");
+    if (badge && badgeMileage && mileage) {
+        badgeMileage.innerText = Number(mileage).toLocaleString();
+        badge.style.display = "flex";
     }
     
     // Reset photo & OCR
@@ -757,9 +766,16 @@ async function submitArrival(e) {
         const result = await res.json();
         
         if (res.ok && result.status === "success") {
+            const recordedMileage = parseInt(document.getElementById("arrive-mileage").value) || 0;
+            const distance = result.distance_km || 0;
             closeArriveModal();
             await loadInitialData();
-            alert(`✅ บันทึกเวลากลับสำเร็จเรียบร้อยครับ!\nระยะทางวิ่ง: ${result.distance_km.toLocaleString()} กม.`);
+            
+            // Check if user wants to continue with next trip immediately (Continuous trip in the day)
+            const cont = confirm(`✅ บันทึกเวลากลับสำเร็จเรียบร้อยครับ!\n• ระยะทางรอบนี้: ${distance.toLocaleString()} กม.\n• เลขไมล์สิ้นสุด: ${recordedMileage.toLocaleString()} กม.\n\n👉 มีการใช้รถต่อเนื่องในรอบวัน ต้องการเปิด 'บันทึกเวลาออก' สำหรับเที่ยวถัดไปต่อทันทีเลยหรือไม่ครับ?`);
+            if (cont) {
+                openDepartModal();
+            }
         } else {
             alert(`⚠️ เกิดข้อผิดพลาด: ${result.detail || result.message || 'ไม่สามารถบันทึกได้'}`);
         }
@@ -864,58 +880,168 @@ async function downloadForm4Image() {
         const data = await fetchForm4Data();
         populateForm4DOM(data);
 
-        // Create an absolute fixed offscreen render stage to guarantee 100% desktop A4 landscape width on any mobile
+        // Create an isolated hidden iframe with fixed A4 Landscape viewport (1400x990)
+        const iframe = document.createElement("iframe");
+        iframe.id = "a4-render-iframe";
+        iframe.style.position = "fixed";
+        iframe.style.left = "-9999px";
+        iframe.style.top = "-9999px";
+        iframe.style.width = "1400px";
+        iframe.style.height = "990px";
+        iframe.style.border = "none";
+        iframe.style.opacity = "0";
+        iframe.style.pointerEvents = "none";
+        iframe.style.zIndex = "-9999";
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        
+        // Grab current Form 4 HTML from DOM
         const printArea = document.getElementById("print-area");
-        const originalPage = printArea.querySelector(".form4-page");
+        const form4Html = printArea.querySelector(".form4-page").outerHTML;
         
-        // Clone the form4-page
-        const clone = originalPage.cloneNode(true);
-        
-        // Wrapper container off-screen
-        const stage = document.createElement("div");
-        stage.id = "a4-image-capture-stage";
-        stage.style.position = "fixed";
-        stage.style.left = "-99999px";
-        stage.style.top = "0";
-        stage.style.width = "1280px";
-        stage.style.minWidth = "1280px";
-        stage.style.maxWidth = "1280px";
-        stage.style.height = "auto";
-        stage.style.zIndex = "-9999";
-        stage.style.backgroundColor = "#ffffff";
-        stage.style.overflow = "visible";
-        
-        // Style cloned page strictly
-        clone.style.width = "1200px";
-        clone.style.minWidth = "1200px";
-        clone.style.maxWidth = "1200px";
-        clone.style.margin = "0 auto";
-        clone.style.padding = "16px 20px";
-        clone.style.boxSizing = "border-box";
-        clone.style.backgroundColor = "#ffffff";
-        clone.style.display = "block";
-        
-        stage.appendChild(clone);
-        document.body.appendChild(stage);
+        // Construct clean standalone HTML page with Sarabun font and exact A4 Landscape CSS
+        iframeDoc.open();
+        iframeDoc.write(`
+            <!DOCTYPE html>
+            <html lang="th">
+            <head>
+                <meta charset="UTF-8">
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+                <style>
+                    * {
+                        box-sizing: border-box;
+                        font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    body {
+                        background: #ffffff;
+                        width: 1400px;
+                        min-height: 990px;
+                        overflow: visible;
+                        display: flex;
+                        justify-content: center;
+                        align-items: flex-start;
+                        padding: 16px 20px;
+                    }
+                    .form4-page {
+                        width: 1350px;
+                        min-width: 1350px;
+                        max-width: 1350px;
+                        background: #ffffff;
+                        padding: 14px 22px;
+                        border: 1px solid #333333;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        box-sizing: border-box;
+                        min-height: 950px;
+                    }
+                    .form4-top-bar {
+                        display: grid;
+                        grid-template-columns: 1fr auto 1fr;
+                        align-items: center;
+                        margin-bottom: 2px;
+                    }
+                    .form4-top-dummy {
+                        visibility: hidden;
+                    }
+                    .form4-logo-container {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                    }
+                    .form4-logo-img {
+                        width: 54px;
+                        height: 54px;
+                        object-fit: contain;
+                        display: block;
+                    }
+                    .form4-header-top {
+                        display: flex;
+                        justify-content: flex-end;
+                        font-size: 14pt;
+                        font-weight: 700;
+                    }
+                    .form4-title-row {
+                        text-align: center;
+                        font-size: 19pt;
+                        font-weight: 700;
+                        margin-bottom: 6px;
+                        letter-spacing: 0.5px;
+                    }
+                    .form4-meta-row {
+                        display: flex;
+                        justify-content: space-between;
+                        font-size: 13.5pt;
+                        margin-bottom: 6px;
+                    }
+                    .form4-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        font-size: 11.5pt;
+                        text-align: center;
+                    }
+                    .form4-table th, .form4-table td {
+                        border: 1px solid #000000;
+                        padding: 3.5px 2px;
+                        line-height: 1.2;
+                    }
+                    .form4-table th {
+                        font-weight: 700;
+                        background: #f8f8f8;
+                    }
+                    .form4-footer {
+                        margin-top: 10px;
+                        display: grid;
+                        grid-template-columns: 1.2fr 1fr 1.2fr;
+                        font-size: 12pt;
+                        align-items: end;
+                    }
+                    .form4-footer-col {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 3px;
+                    }
+                    .signature-line {
+                        text-align: center;
+                        line-height: 1.35;
+                    }
+                </style>
+            </head>
+            <body>
+                ${form4Html}
+            </body>
+            </html>
+        `);
+        iframeDoc.close();
 
-        // Wait brief tick for font and images to render completely
-        await new Promise(r => setTimeout(r, 250));
+        // Wait for iframe content, fonts, and images to settle
+        await new Promise(r => setTimeout(r, 400));
+        if (iframeDoc.fonts) {
+            await iframeDoc.fonts.ready;
+        }
 
-        const canvas = await html2canvas(clone, {
-            scale: 2, // High resolution crisp image (2400px wide A4 landscape)
+        const targetElem = iframeDoc.querySelector(".form4-page");
+
+        const canvas = await html2canvas(targetElem, {
+            scale: 2, // Ultra crisp output (2700 x 1900 px A4 Landscape)
             useCORS: true,
             allowTaint: true,
             backgroundColor: "#ffffff",
-            width: 1200,
-            windowWidth: 1280,
-            scrollX: 0,
-            scrollY: 0
+            width: 1350,
+            windowWidth: 1400
         });
 
-        // Remove offscreen clone
-        document.body.removeChild(stage);
+        // Clean up hidden iframe
+        if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+        }
 
-        // Download PNG
+        // Trigger PNG Download
         const link = document.createElement("a");
         link.download = `แบบ4_บันทึกการใช้รถ_${data.license_plate.replace(/\s+/g, '_')}_${data.month_label.replace(/\s+/g, '_')}.png`;
         link.href = canvas.toDataURL("image/png");
