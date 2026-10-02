@@ -840,10 +840,20 @@ body {
     width: 100% !important;
     max-width: 100% !important;
     box-shadow: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    min-height: 180mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+  }
+  .form4-page:last-child {
+    page-break-after: auto !important;
+    break-after: auto !important;
   }
   @page {
     size: A4 landscape;
-    margin: 5mm 8mm;
+    margin: 6mm 8mm;
   }
 }
 

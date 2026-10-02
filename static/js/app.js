@@ -901,42 +901,153 @@ function formatForm4Date(dateStr) {
     }
 }
 
-function populateForm4DOM(data) {
-    document.getElementById("print-plate").innerText = data.license_plate;
-    document.getElementById("print-prev-month").innerText = data.prev_month_label || data.month_label;
-    document.getElementById("print-start-mileage").innerText = (data.start_mileage || 0).toLocaleString();
-
-    const tbody = document.getElementById("print-table-body");
-    tbody.innerHTML = "";
-
-    const maxRows = Math.max(12, data.trips.length);
-    for (let i = 0; i < maxRows; i++) {
-        const t = data.trips[i] || {};
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td style="height:22px;">${t.trip_number || (i < data.trips.length ? i + 1 : '')}</td>
-            <td style="white-space: nowrap; font-size: 10pt;">${formatForm4Date(t.depart_date)}</td>
-            <td style="white-space: nowrap; font-size: 10pt;">${t.depart_time || ''}</td>
-            <td style="white-space: nowrap; font-size: 10.5pt; font-weight: 600;">${t.depart_mileage ? t.depart_mileage.toLocaleString() : ''}</td>
-            <td style="font-size: 10pt;">${t.approver || ''}</td>
-            <td style="text-align:left; padding-left: 5px; font-size: 10pt; line-height: 1.2;">${t.destination || ''}</td>
-            <td style="white-space: nowrap; font-size: 10pt;">${formatForm4Date(t.arrive_date)}</td>
-            <td style="white-space: nowrap; font-size: 10pt;">${t.arrive_time || ''}</td>
-            <td style="white-space: nowrap; font-size: 10.5pt;">${t.distance_km ? t.distance_km.toLocaleString() : ''}</td>
-            <td style="white-space: nowrap; font-size: 10.5pt; font-weight: 600;">${t.arrive_mileage ? t.arrive_mileage.toLocaleString() : ''}</td>
-            <td style="font-size: 10pt;">${t.driver_name || ''}</td>
-            <td style="white-space: nowrap; font-size: 10pt;">${t.fuel_liters ? t.fuel_liters : ''}</td>
-            <td style="font-size: 10pt;">${t.fuel_authorizer || ''}</td>
-        `;
-        tbody.appendChild(tr);
+function formatDriverCell(driverName) {
+    if (!driverName) return '';
+    if (driverName.includes("(ผู้ขับขี่เฉพาะกิจ)")) {
+        const clean = driverName.replace("(ผู้ขับขี่เฉพาะกิจ)", "").trim();
+        return `<div style="font-weight:600; line-height:1.1;">${clean}</div><div style="font-size:7.5pt; color:#475569; line-height:1; margin-top:2px;">(ผู้ขับขี่เฉพาะกิจ)</div>`;
     }
+    return `<div style="line-height:1.15;">${driverName}</div>`;
+}
 
-    document.getElementById("print-sum-month").innerText = data.month_name || '-';
-    document.getElementById("print-sum-year").innerText = data.year_be || '-';
-    document.getElementById("print-sum-fuel").innerText = data.summary.total_fuel_liters || '0';
-    document.getElementById("print-sum-trips").innerText = data.summary.total_trips || '0';
-    document.getElementById("print-sum-distance").innerText = (data.summary.total_distance_km || 0).toLocaleString();
-    document.getElementById("print-driver-name").innerText = data.summary.driver_name || 'กฤษณพัฒน์ แสงหล้า';
+function formatDestinationCell(destination) {
+    if (!destination) return '';
+    return `<div style="text-align:left; padding-left:4px; font-size:9.5pt; line-height:1.15; word-break:break-word;">${destination}</div>`;
+}
+
+function generateForm4PageHtml(pageTrips, pageNum, totalPages, data, isLastPage) {
+    const rowsHtml = pageTrips.map((t, idx) => {
+        const isBlank = !t.id && !t.trip_number && !t.depart_date;
+        if (isBlank) {
+            return `
+                <tr style="height: 23px;">
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+            `;
+        }
+        return `
+            <tr style="height: 23px;">
+                <td style="font-size: 10pt;">${t.trip_number || ''}</td>
+                <td style="white-space: nowrap; font-size: 9.5pt;">${formatForm4Date(t.depart_date)}</td>
+                <td style="white-space: nowrap; font-size: 9.5pt;">${t.depart_time || ''}</td>
+                <td style="white-space: nowrap; font-size: 10pt; font-weight: 600;">${t.depart_mileage ? t.depart_mileage.toLocaleString() : ''}</td>
+                <td style="font-size: 9.5pt;">${t.approver || ''}</td>
+                <td>${formatDestinationCell(t.destination)}</td>
+                <td style="white-space: nowrap; font-size: 9.5pt;">${formatForm4Date(t.arrive_date)}</td>
+                <td style="white-space: nowrap; font-size: 9.5pt;">${t.arrive_time || ''}</td>
+                <td style="white-space: nowrap; font-size: 10pt;">${t.distance_km ? t.distance_km.toLocaleString() : ''}</td>
+                <td style="white-space: nowrap; font-size: 10pt; font-weight: 600;">${t.arrive_mileage ? t.arrive_mileage.toLocaleString() : ''}</td>
+                <td>${formatDriverCell(t.driver_name)}</td>
+                <td style="white-space: nowrap; font-size: 9.5pt;">${t.fuel_liters ? t.fuel_liters : ''}</td>
+                <td style="font-size: 9.5pt;">${t.fuel_authorizer || ''}</td>
+            </tr>
+        `;
+    }).join("");
+
+    const pageTag = totalPages > 1 ? `<span style="font-size:10pt; font-weight:normal; margin-left:8px; color:#475569;">(หน้า ${pageNum}/${totalPages})</span>` : '';
+
+    return `
+        <div class="form4-page">
+            <div class="form4-top-bar">
+                <div class="form4-top-dummy"></div>
+                <div class="form4-logo-container">
+                    <img src="/images/moc_seal.png" class="form4-logo-img" alt="ตรากระทรวงพาณิชย์">
+                </div>
+                <div class="form4-header-top">
+                    <span>แบบ 4 ${pageTag}</span>
+                </div>
+            </div>
+
+            <div class="form4-title-row">
+                <span>บันทึกการใช้รถราชการ</span>
+            </div>
+
+            <div class="form4-meta-row">
+                <div>
+                    หมายเลขทะเบียน: <strong>${data.license_plate}</strong>
+                </div>
+                <div>
+                    ยอดยกมาจากเมื่อสิ้นเดือน: <span>${data.prev_month_label || data.month_label}</span> เลขไมล์ที่: <strong>${(data.start_mileage || 0).toLocaleString()}</strong>
+                </div>
+            </div>
+
+            <table class="form4-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width: 4%;">ลำดับ<br>เที่ยว</th>
+                        <th colspan="3" style="width: 23%;">ออกเดินทาง</th>
+                        <th rowspan="2" style="width: 10%;">ผู้รับรอง</th>
+                        <th rowspan="2" style="width: 18%;">สถานที่ไป</th>
+                        <th colspan="4" style="width: 29%;">รถกลับถึงสำนักงาน</th>
+                        <th rowspan="2" style="width: 8%;">พนักงาน<br>ขับรถ</th>
+                        <th colspan="2" style="width: 8%;">การเบิกจ่ายน้ำมัน</th>
+                    </tr>
+                    <tr>
+                        <th style="width: 9%;">ว/ด/ป</th>
+                        <th style="width: 6%;">เวลา</th>
+                        <th style="width: 8%;">เลขไมล์</th>
+                        <th style="width: 9%;">ว/ด/ป</th>
+                        <th style="width: 6%;">เวลา</th>
+                        <th style="width: 6%;">ระยะทาง</th>
+                        <th style="width: 8%;">เลขไมล์</th>
+                        <th style="width: 4%;">ลิตร</th>
+                        <th style="width: 4%;">ผู้สั่งจ่าย</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            <div class="form4-footer" style="${isLastPage ? '' : 'visibility: hidden;'}">
+                <div class="form4-footer-col">
+                    <div>สรุปบันทึกการใช้รถยนต์ ประจำเดือน: <strong>${data.month_name || '-'}</strong> พ.ศ. <strong>${data.year_be || '-'}</strong></div>
+                    <div>การใช้น้ำมัน: <strong>${data.summary?.total_fuel_liters || '0'}</strong> ลิตร</div>
+                </div>
+                <div class="form4-footer-col">
+                    <div>จำนวนเที่ยว: <strong>${data.summary?.total_trips || '0'}</strong> เที่ยว</div>
+                    <div>ระยะทาง กม.: <strong>${(data.summary?.total_distance_km || 0).toLocaleString()}</strong> กม.</div>
+                </div>
+                <div class="form4-footer-col">
+                    <div class="signature-line">
+                        ผู้บันทึก: <strong>${data.summary?.driver_name || 'กฤษณพัฒน์ แสงหล้า'}</strong><br>
+                        ตำแหน่ง พนักงานขับรถยนต์
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function populateForm4DOM(data) {
+    const printArea = document.getElementById("print-area");
+    if (!printArea) return;
+    
+    const trips = data.trips || [];
+    const ROWS_PER_PAGE = 10;
+    
+    if (trips.length <= ROWS_PER_PAGE) {
+        // Single Page: Pad rows up to 10
+        const pageTrips = [...trips];
+        while (pageTrips.length < ROWS_PER_PAGE) {
+            pageTrips.push({});
+        }
+        printArea.innerHTML = generateForm4PageHtml(pageTrips, 1, 1, data, true);
+    } else {
+        // Multi Page: Chunk by ROWS_PER_PAGE (10 rows per page)
+        const totalPages = Math.ceil(trips.length / ROWS_PER_PAGE);
+        let html = '';
+        for (let p = 0; p < totalPages; p++) {
+            const start = p * ROWS_PER_PAGE;
+            const chunk = trips.slice(start, start + ROWS_PER_PAGE);
+            while (chunk.length < ROWS_PER_PAGE) {
+                chunk.push({});
+            }
+            const isLast = (p === totalPages - 1);
+            html += generateForm4PageHtml(chunk, p + 1, totalPages, data, isLast);
+        }
+        printArea.innerHTML = html;
+    }
 }
 
 async function generateForm4Print() {
@@ -954,175 +1065,180 @@ async function downloadForm4Image() {
         const data = await fetchForm4Data();
         populateForm4DOM(data);
 
-        // Create an isolated hidden iframe with fixed A4 Landscape viewport (1400x990)
-        const iframe = document.createElement("iframe");
-        iframe.id = "a4-render-iframe";
-        iframe.style.position = "fixed";
-        iframe.style.left = "-9999px";
-        iframe.style.top = "-9999px";
-        iframe.style.width = "1400px";
-        iframe.style.height = "990px";
-        iframe.style.border = "none";
-        iframe.style.opacity = "0";
-        iframe.style.pointerEvents = "none";
-        iframe.style.zIndex = "-9999";
-        document.body.appendChild(iframe);
-
-        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-        
-        // Grab current Form 4 HTML from DOM
-        const printArea = document.getElementById("print-area");
-        const form4Html = printArea.querySelector(".form4-page").outerHTML;
-        
-        // Construct clean standalone HTML page with Sarabun font and exact A4 Landscape CSS
-        iframeDoc.open();
-        iframeDoc.write(`
-            <!DOCTYPE html>
-            <html lang="th">
-            <head>
-                <meta charset="UTF-8">
-                <link rel="preconnect" href="https://fonts.googleapis.com">
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-                <style>
-                    * {
-                        box-sizing: border-box;
-                        font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    body {
-                        background: #ffffff;
-                        width: 1400px;
-                        min-height: 990px;
-                        overflow: visible;
-                        display: flex;
-                        justify-content: center;
-                        align-items: flex-start;
-                        padding: 16px 20px;
-                    }
-                    .form4-page {
-                        width: 1350px;
-                        min-width: 1350px;
-                        max-width: 1350px;
-                        background: #ffffff;
-                        padding: 14px 22px;
-                        border: 1px solid #333333;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: space-between;
-                        box-sizing: border-box;
-                        min-height: 950px;
-                    }
-                    .form4-top-bar {
-                        display: grid;
-                        grid-template-columns: 1fr auto 1fr;
-                        align-items: center;
-                        margin-bottom: 2px;
-                    }
-                    .form4-top-dummy {
-                        visibility: hidden;
-                    }
-                    .form4-logo-container {
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                    }
-                    .form4-logo-img {
-                        width: 54px;
-                        height: 54px;
-                        object-fit: contain;
-                        display: block;
-                    }
-                    .form4-header-top {
-                        display: flex;
-                        justify-content: flex-end;
-                        font-size: 14pt;
-                        font-weight: 700;
-                    }
-                    .form4-title-row {
-                        text-align: center;
-                        font-size: 19pt;
-                        font-weight: 700;
-                        margin-bottom: 6px;
-                        letter-spacing: 0.5px;
-                    }
-                    .form4-meta-row {
-                        display: flex;
-                        justify-content: space-between;
-                        font-size: 13.5pt;
-                        margin-bottom: 6px;
-                    }
-                    .form4-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        font-size: 11.5pt;
-                        text-align: center;
-                    }
-                    .form4-table th, .form4-table td {
-                        border: 1px solid #000000;
-                        padding: 3.5px 2px;
-                        line-height: 1.2;
-                    }
-                    .form4-table th {
-                        font-weight: 700;
-                        background: #f8f8f8;
-                    }
-                    .form4-footer {
-                        margin-top: 10px;
-                        display: grid;
-                        grid-template-columns: 1.2fr 1fr 1.2fr;
-                        font-size: 12pt;
-                        align-items: end;
-                    }
-                    .form4-footer-col {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 3px;
-                    }
-                    .signature-line {
-                        text-align: center;
-                        line-height: 1.35;
-                    }
-                </style>
-            </head>
-            <body>
-                ${form4Html}
-            </body>
-            </html>
-        `);
-        iframeDoc.close();
-
-        // Wait for iframe content, fonts, and images to settle
-        await new Promise(r => setTimeout(r, 400));
-        if (iframeDoc.fonts) {
-            await iframeDoc.fonts.ready;
+        const pages = document.querySelectorAll("#print-area .form4-page");
+        if (!pages || pages.length === 0) {
+            throw new Error("ไม่พบข้อมูลแบบ 4 สำหรับสร้างรูปภาพ");
         }
 
-        const targetElem = iframeDoc.querySelector(".form4-page");
+        for (let i = 0; i < pages.length; i++) {
+            const pageElem = pages[i];
+            const pageNum = i + 1;
+            const totalPages = pages.length;
 
-        const canvas = await html2canvas(targetElem, {
-            scale: 2, // Ultra crisp output (2700 x 1900 px A4 Landscape)
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: "#ffffff",
-            width: 1350,
-            windowWidth: 1400
-        });
+            const iframe = document.createElement("iframe");
+            iframe.style.position = "fixed";
+            iframe.style.left = "-9999px";
+            iframe.style.top = "-9999px";
+            iframe.style.width = "1400px";
+            iframe.style.height = "990px";
+            iframe.style.border = "none";
+            iframe.style.opacity = "0";
+            iframe.style.pointerEvents = "none";
+            iframe.style.zIndex = "-9999";
+            document.body.appendChild(iframe);
 
-        // Clean up hidden iframe
-        if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iframeDoc.open();
+            iframeDoc.write(`
+                <!DOCTYPE html>
+                <html lang="th">
+                <head>
+                    <meta charset="UTF-8">
+                    <link rel="preconnect" href="https://fonts.googleapis.com">
+                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        * {
+                            box-sizing: border-box;
+                            font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
+                            margin: 0;
+                            padding: 0;
+                        }
+                        body {
+                            background: #ffffff;
+                            width: 1400px;
+                            min-height: 990px;
+                            overflow: visible;
+                            display: flex;
+                            justify-content: center;
+                            align-items: flex-start;
+                            padding: 16px 20px;
+                        }
+                        .form4-page {
+                            width: 1350px;
+                            min-width: 1350px;
+                            max-width: 1350px;
+                            background: #ffffff;
+                            padding: 14px 22px;
+                            border: 1px solid #333333;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
+                            box-sizing: border-box;
+                            height: 940px;
+                            min-height: 940px;
+                            max-height: 940px;
+                        }
+                        .form4-top-bar {
+                            display: grid;
+                            grid-template-columns: 1fr auto 1fr;
+                            align-items: center;
+                            margin-bottom: 2px;
+                        }
+                        .form4-top-dummy {
+                            visibility: hidden;
+                        }
+                        .form4-logo-container {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                        }
+                        .form4-logo-img {
+                            width: 52px;
+                            height: 52px;
+                            object-fit: contain;
+                            display: block;
+                        }
+                        .form4-header-top {
+                            display: flex;
+                            justify-content: flex-end;
+                            font-size: 13.5pt;
+                            font-weight: 700;
+                        }
+                        .form4-title-row {
+                            text-align: center;
+                            font-size: 18pt;
+                            font-weight: 700;
+                            margin-bottom: 6px;
+                            letter-spacing: 0.5px;
+                        }
+                        .form4-meta-row {
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 13pt;
+                            margin-bottom: 6px;
+                        }
+                        .form4-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            font-size: 11pt;
+                            text-align: center;
+                        }
+                        .form4-table th, .form4-table td {
+                            border: 1px solid #000000;
+                            padding: 2.5px 2px;
+                            line-height: 1.15;
+                        }
+                        .form4-table th {
+                            font-weight: 700;
+                            background: #f8f8f8;
+                        }
+                        .form4-footer {
+                            margin-top: 8px;
+                            display: grid;
+                            grid-template-columns: 1.2fr 1fr 1.2fr;
+                            font-size: 11.5pt;
+                            align-items: end;
+                        }
+                        .form4-footer-col {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 3px;
+                        }
+                        .signature-line {
+                            text-align: center;
+                            line-height: 1.35;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${pageElem.outerHTML}
+                </body>
+                </html>
+            `);
+            iframeDoc.close();
+
+            await new Promise(r => setTimeout(r, 400));
+            if (iframeDoc.fonts) {
+                await iframeDoc.fonts.ready;
+            }
+
+            const targetElem = iframeDoc.querySelector(".form4-page");
+            const canvas = await html2canvas(targetElem, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: "#ffffff",
+                width: 1350,
+                windowWidth: 1400
+            });
+
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+
+            const link = document.createElement("a");
+            const pageSuffix = totalPages > 1 ? `_หน้า${pageNum}จาก${totalPages}` : '';
+            link.download = `แบบ4_บันทึกการใช้รถ_${data.license_plate.replace(/\s+/g, '_')}_${data.month_label.replace(/\s+/g, '_')}${pageSuffix}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+            
+            if (totalPages > 1 && i < totalPages - 1) {
+                await new Promise(r => setTimeout(r, 500));
+            }
         }
-
-        // Trigger PNG Download
-        const link = document.createElement("a");
-        link.download = `แบบ4_บันทึกการใช้รถ_${data.license_plate.replace(/\s+/g, '_')}_${data.month_label.replace(/\s+/g, '_')}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
 
         alert("✅ เซฟรูปภาพขนาด A4 แนวนอน (ความละเอียดสูง) เรียบร้อยแล้วครับ!");
-
     } catch (e) {
         alert("ไม่สามารถเซฟเป็นรูปภาพได้: " + e.message);
     }
