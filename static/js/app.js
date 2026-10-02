@@ -323,11 +323,15 @@ function openDepartModal() {
     
     // Set default mileage from selected vehicle
     const vehicleSelect = document.getElementById("depart-vehicle");
-    let mileage = 0;
-    if (vehicleSelect && vehicleSelect.selectedOptions[0]) {
-        mileage = vehicleSelect.selectedOptions[0].getAttribute("data-mileage") || 0;
-        document.getElementById("depart-mileage").value = mileage;
+    if (vehicleSelect && appState.selectedVehicleId) {
+        vehicleSelect.value = appState.selectedVehicleId;
     }
+    
+    const selectedVehId = vehicleSelect ? parseInt(vehicleSelect.value) : appState.selectedVehicleId;
+    const vehicle = appState.vehicles.find(v => v.id === selectedVehId) || appState.vehicles[0];
+    const mileage = vehicle ? (vehicle.current_mileage || 0) : 0;
+    
+    document.getElementById("depart-mileage").value = mileage;
     
     // Show continuous trip badge if mileage exists
     const badge = document.getElementById("depart-continuous-badge");
@@ -335,6 +339,8 @@ function openDepartModal() {
     if (badge && badgeMileage && mileage) {
         badgeMileage.innerText = Number(mileage).toLocaleString();
         badge.style.display = "flex";
+    } else if (badge) {
+        badge.style.display = "none";
     }
     
     // Reset photo & OCR
@@ -427,9 +433,17 @@ function openManualModal() {
     document.getElementById("manual-arrive-date").value = getTodayInputFormat();
     document.getElementById("manual-arrive-time").value = getTimeNow();
     
-    const curMileage = appState.vehicles[0]?.current_mileage || 52204;
+    const manualVehSelect = document.getElementById("manual-vehicle");
+    if (manualVehSelect && appState.selectedVehicleId) {
+        manualVehSelect.value = appState.selectedVehicleId;
+    }
+    
+    const selectedVehId = manualVehSelect ? parseInt(manualVehSelect.value) : appState.selectedVehicleId;
+    const vehicle = appState.vehicles.find(v => v.id === selectedVehId) || appState.vehicles[0];
+    const curMileage = vehicle ? (vehicle.current_mileage || 0) : 0;
+    
     document.getElementById("manual-depart-mileage").value = curMileage;
-    document.getElementById("manual-arrive-mileage").value = curMileage + 10;
+    document.getElementById("manual-arrive-mileage").value = curMileage ? curMileage + 10 : 0;
     document.getElementById("manual-destination").value = "";
     syncDestinationChips("manual-destination");
     document.getElementById("manual-approver").value = "";
@@ -1060,11 +1074,18 @@ function initEventListeners() {
     // Mileage input changes update distance live
     document.getElementById("arrive-mileage")?.addEventListener("input", updateDistanceCalc);
     
-    // Vehicle selection updates default mileage
+    // Vehicle selection updates default mileage & badge
     document.getElementById("depart-vehicle")?.addEventListener("change", (e) => {
-        const option = e.target.selectedOptions[0];
-        if (option) {
-            document.getElementById("depart-mileage").value = option.getAttribute("data-mileage") || 0;
+        const vehicleId = parseInt(e.target.value);
+        const vehicle = appState.vehicles.find(v => v.id === vehicleId);
+        const mileage = vehicle ? (vehicle.current_mileage || 0) : (e.target.selectedOptions[0]?.getAttribute("data-mileage") || 0);
+        document.getElementById("depart-mileage").value = mileage;
+        
+        const badge = document.getElementById("depart-continuous-badge");
+        const badgeMileage = document.getElementById("depart-continuous-mileage");
+        if (badge && badgeMileage) {
+            badgeMileage.innerText = Number(mileage).toLocaleString();
+            badge.style.display = mileage > 0 ? "flex" : "none";
         }
     });
 

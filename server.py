@@ -114,12 +114,36 @@ def create_driver(driver: DriverCreate):
     conn.close()
     return {"status": "success", "id": new_id}
 
+def sync_vehicle_mileage(cursor, vehicle_id: int):
+    """
+    Finds the latest recorded trip for the vehicle and updates vehicles.current_mileage
+    to the trip's arrive_mileage (if completed) or depart_mileage (if departed).
+    """
+    cursor.execute("""
+        SELECT depart_mileage, arrive_mileage, status 
+        FROM trips 
+        WHERE vehicle_id = ? 
+        ORDER BY id DESC LIMIT 1
+    """, (vehicle_id,))
+    last_trip = cursor.fetchone()
+    if last_trip:
+        latest = last_trip["arrive_mileage"] if last_trip["arrive_mileage"] else last_trip["depart_mileage"]
+        if latest is not None and latest > 0:
+            cursor.execute("UPDATE vehicles SET current_mileage = ? WHERE id = ?", (latest, vehicle_id))
+            return latest
+    return None
+
 @app.get("/api/vehicles")
 def get_vehicles():
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM vehicles WHERE is_active = 1 ORDER BY id ASC")
     vehicles = [dict(row) for row in cursor.fetchall()]
+    for v in vehicles:
+        latest = sync_vehicle_mileage(cursor, v["id"])
+        if latest is not None:
+            v["current_mileage"] = latest
+    conn.commit()
     conn.close()
     return {"vehicles": vehicles}
 
@@ -423,11 +447,8 @@ async def update_trip(
         status, notes, trip_id
     ))
     
-    # Update vehicle's latest mileage if this trip has the higher mileage
-    if arrive_mileage and arrive_mileage > 0:
-        cursor.execute("UPDATE vehicles SET current_mileage = MAX(COALESCE(current_mileage, 0), ?) WHERE id = ?", (arrive_mileage, vehicle_id))
-    elif depart_mileage and depart_mileage > 0:
-        cursor.execute("UPDATE vehicles SET current_mileage = MAX(COALESCE(current_mileage, 0), ?) WHERE id = ?", (depart_mileage, vehicle_id))
+    # Sync vehicle's latest mileage based on all trips
+    sync_vehicle_mileage(cursor, vehicle_id)
 
     conn.commit()
     conn.close()
@@ -439,7 +460,13 @@ async def update_trip(
 def delete_trip(trip_id: int):
     conn = database.get_db()
     cursor = conn.cursor()
+    cursor.execute("SELECT vehicle_id FROM trips WHERE id = ?", (trip_id,))
+    row = cursor.fetchone()
+    vehicle_id = row["vehicle_id"] if row else None
+    
     cursor.execute("DELETE FROM trips WHERE id = ?", (trip_id,))
+    if vehicle_id:
+        sync_vehicle_mileage(cursor, vehicle_id)
     conn.commit()
     conn.close()
     return {"status": "success"}
