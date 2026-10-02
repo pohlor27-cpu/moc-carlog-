@@ -202,3 +202,6 @@ erDiagram
 3. **Office Handover Protocol:**
    - To transfer ownership to the Office: Share the Google Sheet with the Office's Official Google Account and click **"Transfer Ownership"**.
    - Paste the new Webhook URL into `/api/settings` once. Zero code modifications required.
+4. **Parallel Run & Verification Period (30 Days / 1 Billing Cycle):**
+   - The digital system runs in parallel with traditional paper logbooks for 30 days.
+   - At month-end, the generated Form 4 report is reconciled 1:1 against paper records (mileage, trips, fuel volume) to guarantee 100% data integrity before full paperless decommission.
