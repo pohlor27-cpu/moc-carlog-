@@ -551,13 +551,21 @@ async function runAiOcr(file, type) {
             detailMsg.push(`เวลา: <strong>${data.extracted_time} น.</strong>`);
         }
 
-        if (detailMsg.length > 0) {
-            badge.innerHTML = `✅ AI ดึงข้อมูลสำเร็จ: ${detailMsg.join(" | ")} ${data.date_time_source ? `(${data.date_time_source})` : ''}`;
+        if (data.mileage) {
+            badge.style.background = "#dcfce7";
+            badge.style.color = "#166534";
+            badge.innerHTML = `✅ AI อ่านเลขไมล์สำเร็จ: <strong>${data.mileage.toLocaleString()} กม.</strong> | ${data.extracted_time ? `เวลา: <strong>${data.extracted_time} น.</strong>` : ''}`;
+        } else if (data.note) {
+            badge.style.background = "#fef3c7";
+            badge.style.color = "#92400e";
+            badge.innerHTML = `⚠️ ${data.note}`;
         } else {
-            badge.innerHTML = `ℹ️ ${data.note || 'กรุณาตรวจสอบหรือใส่เลขไมล์'}`;
+            badge.innerHTML = `ℹ️ กรุณาตรวจสอบหรือพิมพ์เลขไมล์`;
         }
     } catch (e) {
-        badge.innerHTML = `⚠️ ดึงเวลาจากรูปแล้ว ตรวจสอบเลขไมล์ได้เลยครับ`;
+        badge.style.background = "#fee2e2";
+        badge.style.color = "#991b1b";
+        badge.innerHTML = `⚠️ การประมวลผลขัดข้อง: ${e.message}`;
     }
 }
 
