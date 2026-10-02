@@ -34,9 +34,38 @@ function getTodayInputFormat() {
 // Initialize Application
 document.addEventListener("DOMContentLoaded", async () => {
     initEventListeners();
+    await autoRestoreGoogleSheetsConfig();
     await loadInitialData();
     setInterval(loadActiveTrips, 15000); // refresh active trips every 15s
 });
+
+async function autoRestoreGoogleSheetsConfig() {
+    try {
+        const savedGsUrl = localStorage.getItem("moc_google_sheets_url");
+        const savedGeminiKey = localStorage.getItem("moc_gemini_api_key");
+        
+        if (savedGsUrl) {
+            const res = await fetch("/api/settings");
+            if (res.ok) {
+                const data = await res.json();
+                if (!data.google_sheets_set) {
+                    // Server lost settings due to container redeploy; auto-push from browser storage
+                    const payload = { google_sheets_url: savedGsUrl };
+                    if (savedGeminiKey) payload.gemini_api_key = savedGeminiKey;
+                    await fetch("/api/settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    // Auto-pull existing trips from Google Sheets
+                    await fetch("/api/google/restore", { method: "POST" });
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("Auto restore config check skipped:", e);
+    }
+}
 
 async function loadInitialData() {
     updateOfflineBadgeUI();
@@ -1520,6 +1549,13 @@ async function saveSettings(e) {
             body: JSON.stringify(payload)
         });
         if (res.ok) {
+            // Save locally in browser to auto-recover across future redeploys
+            if (payload.google_sheets_url) {
+                localStorage.setItem("moc_google_sheets_url", payload.google_sheets_url);
+            }
+            if (payload.gemini_api_key) {
+                localStorage.setItem("moc_gemini_api_key", payload.gemini_api_key);
+            }
             alert("✅ บันทึกการตั้งค่าเรียบร้อยแล้วครับ!");
             closeSettingsModal();
         } else {

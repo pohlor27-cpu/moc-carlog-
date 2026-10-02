@@ -41,6 +41,17 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Helper function to get setting
 def get_setting_val(key: str, default: str = "") -> str:
+    # Check OS Environment Variables first (e.g. from Render Dashboard)
+    env_map = {
+        "google_sheets_url": "GOOGLE_SHEETS_URL",
+        "gemini_api_key": "GEMINI_API_KEY",
+        "agency_name": "AGENCY_NAME",
+        "default_approver": "DEFAULT_APPROVER"
+    }
+    env_var_name = env_map.get(key, key.upper())
+    if env_var_name in os.environ and os.environ[env_var_name].strip():
+        return os.environ[env_var_name].strip()
+
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
@@ -54,6 +65,16 @@ def set_setting_val(key: str, value: str):
     cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
     conn.commit()
     conn.close()
+
+@app.on_event("startup")
+def startup_event():
+    # Attempt to auto-restore trips from Google Sheets if configured
+    try:
+        url = get_setting_val("google_sheets_url")
+        if url:
+            google_sync.restore_from_sheets()
+    except Exception:
+        pass
 
 # Models
 class DriverCreate(BaseModel):

@@ -6,8 +6,13 @@ import database
 
 logger = logging.getLogger("google_sync")
 
+import os
+
 def get_google_sheets_url():
-    """Retrieve configured Google Apps Script Webhook URL from database settings."""
+    """Retrieve configured Google Apps Script Webhook URL from environment or database settings."""
+    env_url = os.environ.get("GOOGLE_SHEETS_URL", "").strip()
+    if env_url:
+        return env_url
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT value FROM settings WHERE key = 'google_sheets_url'")
