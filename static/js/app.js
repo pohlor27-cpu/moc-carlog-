@@ -1591,6 +1591,7 @@ async function restoreFromGoogleSheets() {
         const data = await res.json();
         if (data.status === "success") {
             await loadInitialData();
+            await loadModeratorData();
             alert(`✅ ดึงข้อมูลสำเร็จเรียบร้อยครับ! (อัปเดต ${data.restored_count} รายการ)`);
             closeSettingsModal();
         } else {
@@ -1827,7 +1828,7 @@ async function loadModeratorData() {
         renderModeratorRings(data.vehicle_stats || [], sum);
 
         // 4. Render Trips Cross-Check Table
-        renderModeratorTrips(data.recent_trips || []);
+        filterModeratorTrips();
 
     } catch (e) {
         console.error("Error loading moderator data:", e);
@@ -2007,6 +2008,29 @@ function renderModeratorRings(vehicleStats, summary) {
     legend.innerHTML = legendHtml;
 }
 
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return "-";
+    let clean = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    if (clean.includes("-")) {
+        const parts = clean.split("-");
+        if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const yThai = (y < 2500) ? y + 543 : y;
+            return `${parts[2]}/${parts[1]}/${yThai}`;
+        }
+    }
+    return clean;
+}
+
+function formatDisplayTime(timeStr) {
+    if (!timeStr) return "-";
+    let clean = timeStr.includes("T") ? timeStr.split("T")[1].slice(0, 5) : timeStr;
+    if (clean.length > 5 && clean.includes(":")) {
+        clean = clean.slice(0, 5);
+    }
+    return `${clean} น.`;
+}
+
 function renderModeratorTrips(trips) {
     const tbody = document.getElementById("moderator-trips-table-body");
     if (!tbody) return;
@@ -2025,7 +2049,7 @@ function renderModeratorTrips(trips) {
 
         html += `
             <tr id="mod-trip-row-${t.id}">
-                <td style="font-weight: 600; color: #1e293b; font-size: 0.88rem;">${escapeHtml(t.depart_date || '-')}</td>
+                <td style="font-weight: 600; color: #1e293b; font-size: 0.88rem;">${formatDisplayDate(t.depart_date)}</td>
                 <td style="font-weight: 700; color: #2563eb; font-size: 0.88rem;">${escapeHtml(t.license_plate || '-')}</td>
                 <td>
                     <div style="font-weight: 600; color: #1e293b;">${escapeHtml(t.driver_name || '-')}</div>
@@ -2036,8 +2060,8 @@ function renderModeratorTrips(trips) {
                 </td>
                 <td style="color: #475569; font-size: 0.85rem;">${escapeHtml(t.approver || '-')}</td>
                 <td style="font-size: 0.85rem; color: #334155;">
-                    ออก: <strong>${escapeHtml(t.depart_time || '-')}</strong><br>
-                    กลับ: <strong>${isCompleted ? escapeHtml(t.arrive_time || '-') : '<span style="color:#d97706;">(กำลังวิ่ง)</span>'}</strong>
+                    ออก: <strong>${formatDisplayTime(t.depart_time)}</strong><br>
+                    กลับ: <strong>${isCompleted ? formatDisplayTime(t.arrive_time) : '<span style="color:#d97706;">(กำลังวิ่ง)</span>'}</strong>
                 </td>
                 <td style="font-weight: 700; color: #10b981; font-family: monospace; font-size: 0.95rem;">
                     ${isCompleted ? `${dist.toLocaleString()} กม.` : '-'}

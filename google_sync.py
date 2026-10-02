@@ -114,6 +114,25 @@ def full_backup_to_sheets():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+def sanitize_date_str(d_str: str) -> str:
+    if not d_str:
+        return ""
+    d_str = str(d_str).strip()
+    if "T" in d_str:
+        return d_str.split("T")[0]
+    return d_str
+
+def sanitize_time_str(t_str: str) -> str:
+    if not t_str:
+        return ""
+    t_str = str(t_str).strip()
+    if "T" in t_str:
+        part = t_str.split("T")[1]
+        return part[:5]
+    if len(t_str) > 5 and ":" in t_str:
+        return t_str[:5]
+    return t_str
+
 def restore_from_sheets():
     """Pulls all trips from Google Sheets and restores/updates them in local database."""
     webhook_url = get_google_sheets_url()
@@ -149,13 +168,13 @@ def restore_from_sheets():
             d_id = d_map.get(d_name, 1)
 
             trip_id = t.get("id")
-            depart_date = str(t.get("depart_date", "")).strip()
-            depart_time = str(t.get("depart_time", "")).strip()
+            depart_date = sanitize_date_str(t.get("depart_date", ""))
+            depart_time = sanitize_time_str(t.get("depart_time", ""))
             depart_mileage = int(t.get("depart_mileage") or 0)
             destination = str(t.get("destination", "")).strip()
             approver = str(t.get("approver", "")).strip()
-            arrive_date = str(t.get("arrive_date", "")).strip()
-            arrive_time = str(t.get("arrive_time", "")).strip()
+            arrive_date = sanitize_date_str(t.get("arrive_date", ""))
+            arrive_time = sanitize_time_str(t.get("arrive_time", ""))
             arrive_mileage = int(t.get("arrive_mileage") or 0) if t.get("arrive_mileage") else None
             distance_km = int(t.get("distance_km") or 0)
             fuel_liters = float(t.get("fuel_liters") or 0.0)
