@@ -42,8 +42,7 @@ def extract_exif_datetime(image_bytes: bytes) -> dict:
 
 def optimize_image_for_ai(image_bytes: bytes) -> tuple[bytes, str]:
     """
-    Auto-rotates image (EXIF transpose) and resizes to max 1280px
-    to guarantee fast AI processing.
+    Auto-rotates image (EXIF transpose) and resizes to max 1280px.
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
@@ -87,8 +86,9 @@ def parse_clean_json(text: str) -> dict:
 def analyze_dashboard_image(image_bytes: bytes, mime_type: str = "image/jpeg", api_key: str = None) -> dict:
     """
     Analyzes car dashboard / odometer image using Gemini Vision AI + EXIF extraction.
+    Supports both Google AI Studio keys (AIzaSy...) and Bearer tokens (AQ...).
     """
-    # 1. First extract EXIF metadata
+    # 1. Extract EXIF metadata
     exif_result = extract_exif_datetime(image_bytes)
     extracted_date = exif_result["date"]
     extracted_time = exif_result["time"]
@@ -112,91 +112,109 @@ def analyze_dashboard_image(image_bytes: bytes, mime_type: str = "image/jpeg", a
 
     gemini_key = gemini_key.strip()
 
-    # List of API Endpoints and Models to try in sequence
-    endpoints_to_try = [
-        ("v1beta", "gemini-1.5-flash-latest"),
-        ("v1beta", "gemini-1.5-flash"),
-        ("v1", "gemini-1.5-flash"),
-        ("v1beta", "gemini-2.0-flash"),
-        ("v1beta", "gemini-2.0-flash-exp"),
-        ("v1beta", "gemini-1.5-flash-8b"),
-        ("v1beta", "gemini-1.5-pro"),
-    ]
-    
     prompt = """
 Look at this vehicle dashboard/instrument cluster photo very carefully.
-Find the TOTAL ODOMETER MILEAGE in kilometers:
-- Look at the central digital screen, LCD display, or odometer box (often labeled ODO or next to km, e.g. ODO 65650 km, 52204, etc.).
-- Output the exact total odometer reading integer.
-- Also look for digital clock time if visible (e.g. 10:57).
+Extract the TOTAL ODOMETER MILEAGE in kilometers:
+- Find the total vehicle distance number on the LCD screen or speedometer (usually 4 to 6 digits, e.g. 65650, 52204, etc., often labeled ODO or next to km).
+- Return only the main integer number.
+- Also extract digital clock time if visible (e.g. 10:05, 11:43).
 
-Return strictly JSON format only:
+Return strictly JSON format:
 {
   "mileage": 65650,
-  "clock_time": "10:57",
+  "clock_time": "10:05",
   "confidence": "high"
 }
 """
 
     b64_image = base64.b64encode(optimized_bytes).decode('utf-8')
+    
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": opt_mime,
+                            "data": b64_image
+                        }
+                    }
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.1
+        }
+    }
+
+    # Prepare requests: try multiple model names
+    models = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-exp", "gemini-pro-vision"]
     error_details = []
 
-    for api_ver, model_name in endpoints_to_try:
-        try:
-            url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model_name}:generateContent?key={gemini_key}"
-            headers = {"Content-Type": "application/json"}
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inline_data": {
-                                    "mime_type": opt_mime,
-                                    "data": b64_image
-                                }
-                            }
-                        ]
+    # Check if key is Bearer token (starts with AQ...) vs Standard AI Studio Key (starts with AIzaSy...)
+    is_bearer = gemini_key.startswith("AQ.") or len(gemini_key) > 100
+
+    for model in models:
+        # Try both v1beta and v1
+        for api_ver in ["v1beta", "v1"]:
+            try:
+                if is_bearer:
+                    url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model}:generateContent"
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {gemini_key}"
                     }
-                ],
-                "generationConfig": {
-                    "temperature": 0.1
-                }
-            }
+                else:
+                    url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model}:generateContent?key={gemini_key}"
+                    headers = {
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": gemini_key
+                    }
 
-            req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
-            with urllib.request.urlopen(req, timeout=20) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                candidate_text = result["candidates"][0]["content"]["parts"][0]["text"]
-                parsed = parse_clean_json(candidate_text)
-                
-                # Parse mileage
-                raw_mileage = parsed.get("mileage")
-                mileage_int = None
-                if raw_mileage is not None:
-                    digits = re.sub(r'[^\d]', '', str(raw_mileage))
-                    if digits:
-                        mileage_int = int(digits)
+                req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
+                with urllib.request.urlopen(req, timeout=20) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+                    candidate_text = result["candidates"][0]["content"]["parts"][0]["text"]
+                    parsed = parse_clean_json(candidate_text)
+                    
+                    raw_mileage = parsed.get("mileage")
+                    mileage_int = None
+                    if raw_mileage is not None:
+                        digits = re.sub(r'[^\d]', '', str(raw_mileage))
+                        if digits:
+                            mileage_int = int(digits)
 
-                if parsed.get("clock_time") and not extracted_time:
-                    extracted_time = parsed.get("clock_time")
-                    dt_source = "หน้าปัดรถยนต์"
+                    if parsed.get("clock_time") and not extracted_time:
+                        extracted_time = parsed.get("clock_time")
+                        dt_source = "หน้าปัดรถยนต์"
 
-                return {
-                    "success": True,
-                    "mileage": mileage_int,
-                    "extracted_date": extracted_date,
-                    "extracted_time": extracted_time,
-                    "date_time_source": dt_source,
-                    "confidence": parsed.get("confidence", "high"),
-                    "note": f"AI อ่านเลขไมล์สำเร็จ: {mileage_int:,} กม." if mileage_int else "AI วิเคราะห์ภาพแล้ว ไม่พบตัวเลขไมล์ชัดเจน"
-                }
+                    return {
+                        "success": True,
+                        "mileage": mileage_int,
+                        "extracted_date": extracted_date,
+                        "extracted_time": extracted_time,
+                        "date_time_source": dt_source,
+                        "confidence": parsed.get("confidence", "high"),
+                        "note": f"AI อ่านเลขไมล์สำเร็จ: {mileage_int:,} กม." if mileage_int else "AI วิเคราะห์ภาพแล้ว ไม่พบตัวเลขไมล์ชัดเจน"
+                    }
 
-        except urllib.error.HTTPError as he:
-            err_body = he.read().decode('utf-8', errors='ignore')
-            error_details.append(f"{model_name}({api_ver}): HTTP {he.code}")
-        except Exception as e:
-            error_details.append(f"{model_name}: {str(e)}")
+            except urllib.error.HTTPError as he:
+                err_body = he.read().decode('utf-8', errors='ignore')
+                try:
+                    err_json = json.loads(err_body)
+                    msg = err_json.get("error", {}).get("message", f"HTTP {he.code}")
+                except:
+                    msg = f"HTTP {he.code}: {err_body[:60]}"
+                error_details.append(f"{model}: {msg}")
+            except Exception as e:
+                error_details.append(f"{model}: {str(e)}")
+
+    # If all failed, provide clear guidance
+    if is_bearer:
+        key_hint = " (คีย์ที่ใส่เป็น Bearer Token กรุณาใช้ API Key ที่ขึ้นต้นด้วย AIzaSy จาก aistudio.google.com/apikey)"
+    else:
+        key_hint = ""
 
     return {
         "success": False,
@@ -204,5 +222,5 @@ Return strictly JSON format only:
         "extracted_date": extracted_date,
         "extracted_time": extracted_time,
         "date_time_source": dt_source,
-        "note": f"ข้อผิดพลาดจาก AI: {' | '.join(error_details[:3])}"
+        "note": f"⚠️ ไม่สามารถเรียก AI ได้: {error_details[0] if error_details else 'เชื่อมต่อไม่สำเร็จ'}{key_hint}"
     }
