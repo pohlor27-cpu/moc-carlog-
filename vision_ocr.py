@@ -146,16 +146,19 @@ def analyze_dashboard_image(image_bytes: bytes, mime_type: str = "image/jpeg", a
     gemini_key = gemini_key.strip()
 
     prompt = """
-Look at this vehicle dashboard/instrument cluster photo very carefully.
-Find the TOTAL ODOMETER MILEAGE in kilometers:
-- Find the total vehicle distance number on the LCD screen or speedometer (usually 4 to 6 digits, e.g. 65650, 52204, etc., often labeled ODO or next to km).
-- Return only the main integer number.
-- Also extract digital clock time if visible (e.g. 10:05, 11:43).
+You are an expert OCR system for car instrument clusters and dashboards.
+Analyze this dashboard photo carefully:
+1. "mileage": Find the TOTAL vehicle accumulated odometer mileage (ODO / Total km).
+   - Look for 4 to 6 digit integer numbers (e.g., 52204, 65650, 114280).
+   - Distinguish carefully from TRIP meters (Trip A/B), Range, or Speedometer (km/h).
+   - Return only the main integer number.
+2. "clock_time": Digital clock time shown on the dashboard (e.g. "09:45", "14:20") if visible.
+3. "confidence": "high", "medium", or "low".
 
-Return strictly JSON format only:
+Return strictly JSON format:
 {
-  "mileage": 65650,
-  "clock_time": "10:05",
+  "mileage": 52204,
+  "clock_time": "14:20",
   "confidence": "high"
 }
 """
@@ -184,21 +187,24 @@ Return strictly JSON format only:
     # Discover models supported for this specific key
     candidate_models = discover_available_models(gemini_key)
     
-    # Fallback list if discovery returned empty
-    if not candidate_models:
-        candidate_models = [
-            "models/gemini-1.5-flash",
-            "models/gemini-1.5-flash-latest",
-            "models/gemini-2.0-flash",
-            "models/gemini-2.0-flash-exp",
-            "models/gemini-1.5-pro",
-            "models/gemini-pro-vision"
-        ]
+    # Priority fallback list
+    priority_models = [
+        "models/gemini-2.0-flash",
+        "models/gemini-1.5-flash",
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-2.0-flash-exp",
+        "models/gemini-1.5-pro"
+    ]
+    
+    # Merge discovered with priority
+    combined_models = []
+    for m in candidate_models + priority_models:
+        if m not in combined_models:
+            combined_models.append(m)
 
     error_details = []
 
-    for model_path in candidate_models:
-        # Ensure model_path is clean
+    for model_path in combined_models:
         clean_model = model_path if model_path.startswith("models/") else f"models/{model_path}"
         
         for api_ver in ["v1beta", "v1"]:
@@ -210,10 +216,22 @@ Return strictly JSON format only:
                 }
 
                 req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), headers=headers, method='POST')
-                with urllib.request.urlopen(req, timeout=20) as response:
+                with urllib.request.urlopen(req, timeout=25) as response:
                     result = json.loads(response.read().decode('utf-8'))
                     candidate_text = result["candidates"][0]["content"]["parts"][0]["text"]
-                    parsed = parse_clean_json(candidate_text)
+                    
+                    # Parse JSON or regex fallback
+                    parsed = {}
+                    try:
+                        parsed = parse_clean_json(candidate_text)
+                    except Exception:
+                        # Regex fallback if JSON was dirty
+                        mileage_match = re.search(r'"mileage"\s*:\s*(\d+)', candidate_text)
+                        if mileage_match:
+                            parsed["mileage"] = int(mileage_match.group(1))
+                        clock_match = re.search(r'"clock_time"\s*:\s*"([^"]+)"', candidate_text)
+                        if clock_match:
+                            parsed["clock_time"] = clock_match.group(1)
                     
                     raw_mileage = parsed.get("mileage")
                     mileage_int = None
@@ -226,7 +244,7 @@ Return strictly JSON format only:
                         extracted_time = parsed.get("clock_time")
                         dt_source = "หน้าปัดรถยนต์"
 
-                    # Save working model to cache
+                    # Cache working model
                     CACHED_WORKING_MODEL = clean_model
 
                     return {
@@ -236,7 +254,7 @@ Return strictly JSON format only:
                         "extracted_time": extracted_time,
                         "date_time_source": dt_source,
                         "confidence": parsed.get("confidence", "high"),
-                        "note": f"AI อ่านเลขไมล์สำเร็จ: {mileage_int:,} กม." if mileage_int else "AI วิเคราะห์ภาพแล้ว ไม่พบตัวเลขไมล์ชัดเจน"
+                        "note": f"AI อ่านเลขไมล์สำเร็จ: {mileage_int:,} กม." if mileage_int else "AI วิเคราะห์ภาพแล้ว ไม่พบตัวเลขไมล์ชัดเจน (สามารถพิมพ์ระบุเองได้)"
                     }
 
             except urllib.error.HTTPError as he:
@@ -244,11 +262,14 @@ Return strictly JSON format only:
                 try:
                     err_json = json.loads(err_body)
                     msg = err_json.get("error", {}).get("message", f"HTTP {he.code}")
-                except:
-                    msg = f"HTTP {he.code}: {err_body[:60]}"
-                error_details.append(f"{clean_model}({api_ver}): {msg}")
+                except Exception:
+                    msg = f"HTTP {he.code}: {err_body[:80]}"
+                error_details.append(f"{clean_model}: {msg}")
             except Exception as e:
                 error_details.append(f"{clean_model}: {str(e)}")
+
+    # Clear cache if all attempts failed
+    CACHED_WORKING_MODEL = None
 
     return {
         "success": False,

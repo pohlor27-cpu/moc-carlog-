@@ -270,6 +270,9 @@ async def record_manual_trip(
     conn.close()
 
     return {"status": "success", "trip_id": trip_id, "trip_number": trip_count, "distance_km": distance_km}
+
+# Record Arrival (กลับถึงสำนักงาน)
+@app.post("/api/trips/{trip_id}/arrive")
 async def record_arrival(
     trip_id: int,
     arrive_date: str = Form(...),
