@@ -208,3 +208,16 @@ erDiagram
 5. **Moderator (โม) Operational Workflow & Time Integrity:**
    - **Document Cross-Check:** Physical vehicle request forms ("ใบขอใช้รถ") submitted to the Moderator act as a natural cross-check to gently remind drivers to log trips.
    - **Time Integrity:** Official Form 4 reports strictly reflect the driver-entered operational trip time (`depart_time`, `arrive_time`), decoupled from network/server upload timestamps (`created_at`). This ensures full compliance even when trips are uploaded after returning from remote offline zones.
+
+---
+
+### 7. Future Roadmap & Phase 2 Expansion Modules
+
+* **Phase 2 (Moderator Center & Fleet Maintenance):**
+  - **Moderator PIN 4-Digit Gatekeeper:** Master PIN protection for system configuration and global data operations.
+  - **Maintenance & Garage Service Tracker:** Centralized logging for vehicle repairs, garage visits, parts replacement, cost tracking, and dynamic status toggle (`🔧 อยู่ระหว่างเข้าศูนย์`).
+  - **Steering Column Oil Service Alert:** Mileage milestone comparison (`next_service_mileage - current_mileage`) with early warning badges (< 1,000 km).
+  - **3D Visual Analytics & Donut Charts:** Real-time visual workload distribution across all 4 drivers and vehicles.
+* **Phase 3 (Enterprise Fleet Intelligence):**
+  - Average fuel economy (km/L) automated efficiency analytics.
+  - Annual tax / compulsory motor insurance (พ.ร.บ.) expiration alerts via LINE Notify.
