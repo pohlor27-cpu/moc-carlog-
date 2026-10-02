@@ -319,6 +319,9 @@ function openDepartModal() {
     
     // Reset photo & OCR
     resetPhotoBox("depart");
+    document.getElementById("depart-destination").value = "";
+    syncDestinationChips("depart-destination");
+    document.getElementById("depart-approver").value = "";
     
     document.getElementById("modal-depart").classList.add("open");
 }
@@ -364,6 +367,7 @@ function openManualModal() {
     document.getElementById("manual-depart-mileage").value = curMileage;
     document.getElementById("manual-arrive-mileage").value = curMileage + 10;
     document.getElementById("manual-destination").value = "";
+    syncDestinationChips("manual-destination");
     document.getElementById("manual-approver").value = "";
     document.getElementById("manual-fuel-liters").value = "";
     document.getElementById("manual-fuel-authorizer").value = "";
@@ -581,11 +585,50 @@ function updateDistanceCalc() {
     }
 }
 
-// ----------------- Quick Destination Chips -----------------
+// ----------------- Multi Quick Destination Chips -----------------
 
-function setDestination(text) {
-    const input = document.getElementById("depart-destination");
-    if (input) input.value = text;
+function toggleDestination(inputId, text) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    let currentVal = input.value.trim();
+    let items = currentVal ? currentVal.split(/[,，]\s*/).map(s => s.trim()).filter(Boolean) : [];
+
+    const existingIdx = items.indexOf(text);
+    if (existingIdx >= 0) {
+        // Toggle OFF if already clicked
+        items.splice(existingIdx, 1);
+    } else {
+        // Toggle ON (Append to list)
+        items.push(text);
+    }
+
+    input.value = items.join(", ");
+    syncDestinationChips(inputId);
+}
+
+function clearDestinations(inputId) {
+    const input = document.getElementById(inputId);
+    if (input) input.value = "";
+    syncDestinationChips(inputId);
+}
+
+function syncDestinationChips(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const currentVal = input.value.toLowerCase();
+    const modal = input.closest(".modal-card") || document;
+    const chips = modal.querySelectorAll(".chip-btn[data-dest]");
+
+    chips.forEach(chip => {
+        const dest = chip.getAttribute("data-dest");
+        if (dest && currentVal.includes(dest.toLowerCase())) {
+            chip.classList.add("active-tag");
+        } else {
+            chip.classList.remove("active-tag");
+        }
+    });
 }
 
 // ----------------- Submissions -----------------

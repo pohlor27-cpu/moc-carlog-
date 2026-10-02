@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.0.1">
+    <link rel="stylesheet" href="/css/style.css?v=2.1.0">
 </head>
 <body>
 
@@ -221,16 +221,43 @@
                     </div>
                 </div>
 
-                <!-- Destination & Quick Chips -->
+                <!-- Destination & Quick Multi-Chips -->
                 <div class="form-group">
-                    <label class="form-label">สถานที่ไป / ภารกิจ</label>
-                    <input type="text" id="depart-destination" class="form-input" placeholder="พิมพ์สถานที่ หรือแตะปุ่มด่วนด้านล่าง" required>
-                    <div class="chips-container">
-                        <button type="button" class="chip-btn" onclick="setDestination('ศาลากลางจังหวัดเพชรบุรี')">📍 ศาลากลาง จ.เพชรบุรี</button>
-                        <button type="button" class="chip-btn" onclick="setDestination('กระทรวงพาณิชย์ (นนทบุรี)')">📍 กระทรวงพาณิชย์</button>
-                        <button type="button" class="chip-btn" onclick="setDestination('ตรวจตลาดสดเทศบาลเมืองเพชรบุรี')">📍 ตรวจตลาดสด</button>
-                        <button type="button" class="chip-btn" onclick="setDestination('อำเภอชะอำ / หัวหิน')">📍 ชะอำ / หัวหิน</button>
-                        <button type="button" class="chip-btn" onclick="setDestination('ไปรษณีย์ / ธนาคาร')">📍 ไปรษณีย์ / ธนาคาร</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">📍 สถานที่ไป / ภารกิจ (เลือกได้หลายจุด)</label>
+                        <button type="button" class="chip-btn-clear" onclick="clearDestinations('depart-destination')">🗑️ ล้างสถานที่</button>
+                    </div>
+                    <input type="text" id="depart-destination" class="form-input" placeholder="พิมพ์เอง หรือแตะเลือกสถานที่/อำเภอด้านล่าง" required oninput="syncDestinationChips('depart-destination')">
+                    
+                    <!-- Group 1: สถานที่สำคัญ -->
+                    <div class="chips-category">
+                        <div class="chips-category-title">
+                            <span>🏛️ สถานที่สำคัญ / จุดทำธุระ</span>
+                        </div>
+                        <div class="chips-container">
+                            <button type="button" class="chip-btn" data-dest="ศาลากลาง จ.เพชรบุรี" onclick="toggleDestination('depart-destination', 'ศาลากลาง จ.เพชรบุรี')">🏛️ ศาลากลาง จ.เพชรบุรี</button>
+                            <button type="button" class="chip-btn" data-dest="กระทรวงพาณิชย์ (นนทบุรี)" onclick="toggleDestination('depart-destination', 'กระทรวงพาณิชย์ (นนทบุรี)')">🏢 กระทรวงพาณิชย์</button>
+                            <button type="button" class="chip-btn" data-dest="ไปรษณีย์" onclick="toggleDestination('depart-destination', 'ไปรษณีย์')">📮 ไปรษณีย์</button>
+                            <button type="button" class="chip-btn" data-dest="ตรวจตลาดสด" onclick="toggleDestination('depart-destination', 'ตรวจตลาดสด')">🛒 ตรวจตลาดสด</button>
+                            <button type="button" class="chip-btn" data-dest="ธนาคาร" onclick="toggleDestination('depart-destination', 'ธนาคาร')">🏦 ธนาคาร</button>
+                        </div>
+                    </div>
+
+                    <!-- Group 2: อำเภอในเพชรบุรี (Scrollbar แนวนอน ทั้ง 8 อำเภอ) -->
+                    <div class="chips-category">
+                        <div class="chips-category-title">
+                            <span>🗺️ อำเภอใน จ.เพชรบุรี (เลื่อนแนวนอนได้ 👉)</span>
+                        </div>
+                        <div class="chips-scroll-container">
+                            <button type="button" class="chip-btn" data-dest="อ.เมืองเพชรบุรี" onclick="toggleDestination('depart-destination', 'อ.เมืองเพชรบุรี')">📍 อ.เมืองเพชรบุรี</button>
+                            <button type="button" class="chip-btn" data-dest="อ.ชะอำ" onclick="toggleDestination('depart-destination', 'อ.ชะอำ')">🏖️ อ.ชะอำ</button>
+                            <button type="button" class="chip-btn" data-dest="อ.ท่ายาง" onclick="toggleDestination('depart-destination', 'อ.ท่ายาง')">📍 อ.ท่ายาง</button>
+                            <button type="button" class="chip-btn" data-dest="อ.บ้านลาด" onclick="toggleDestination('depart-destination', 'อ.บ้านลาด')">📍 อ.บ้านลาด</button>
+                            <button type="button" class="chip-btn" data-dest="อ.บ้านแหลม" onclick="toggleDestination('depart-destination', 'อ.บ้านแหลม')">🦐 อ.บ้านแหลม</button>
+                            <button type="button" class="chip-btn" data-dest="อ.เขาย้อย" onclick="toggleDestination('depart-destination', 'อ.เขาย้อย')">⛰️ อ.เขาย้อย</button>
+                            <button type="button" class="chip-btn" data-dest="อ.แก่งกระจาน" onclick="toggleDestination('depart-destination', 'อ.แก่งกระจาน')">🌲 อ.แก่งกระจาน</button>
+                            <button type="button" class="chip-btn" data-dest="อ.หนองหญ้าปล้อง" onclick="toggleDestination('depart-destination', 'อ.หนองหญ้าปล้อง')">🌾 อ.หนองหญ้าปล้อง</button>
+                        </div>
                     </div>
                 </div>
 
@@ -343,34 +370,6 @@
             </form>
         </div>
     </div>
-
-                <div class="form-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <label class="form-label" style="margin-bottom:0;">เลขไมล์ตอนกลับ (กม.)</label>
-                        <span id="calc-distance-badge" style="font-size: 0.85rem; font-weight: 700; color: #059669;"></span>
-                    </div>
-                    <input type="number" id="arrive-mileage" class="form-input" placeholder="เช่น 53020" required style="font-size: 1.15rem; font-weight: 700; color: #059669;">
-                </div>
-
-                <!-- Fuel Refill Section -->
-                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
-                    <div style="font-weight: 600; color: #b45309; font-size: 0.9rem; margin-bottom: 8px;">⛽ การเบิกจ่ายน้ำมันเชื้อเพลิง (ถ้ามีเติมระหว่างทาง)</div>
-                    <div class="form-row">
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">จำนวน (ลิตร)</label>
-                            <input type="number" step="0.01" id="arrive-fuel-liters" class="form-input" placeholder="เช่น 45.5">
-                        </div>
-                        <div class="form-group" style="margin-bottom:0;">
-                            <label class="form-label">ผู้สั่งจ่ายน้ำมัน</label>
-                            <input type="text" id="arrive-fuel-authorizer" class="form-input" placeholder="เช่น พจ.เพชรบุรี">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeArriveModal()">ยกเลิก</button>
-                    <button type="submit" id="btn-arrive-submit" class="btn-submit" style="background: #059669;">💾 บันทึกเวลากลับ</button>
-                </div>
             </form>
         </div>
     </div>
@@ -410,10 +409,44 @@
                     </div>
                 </div>
 
-                <!-- ปลายทาง & ผู้รับรอง -->
+                <!-- ปลายทาง & Multi Quick Chips -->
                 <div class="form-group">
-                    <label class="form-label">สถานที่ไป / ภารกิจ</label>
-                    <input type="text" id="manual-destination" class="form-input" placeholder="เช่น ศาลากลางจังหวัดเพชรบุรี" required>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">📍 สถานที่ไป / ภารกิจ (เลือกได้หลายจุด)</label>
+                        <button type="button" class="chip-btn-clear" onclick="clearDestinations('manual-destination')">🗑️ ล้างสถานที่</button>
+                    </div>
+                    <input type="text" id="manual-destination" class="form-input" placeholder="เช่น ศาลากลางจังหวัดเพชรบุรี" required oninput="syncDestinationChips('manual-destination')">
+                    
+                    <!-- Group 1: สถานที่สำคัญ -->
+                    <div class="chips-category">
+                        <div class="chips-category-title">
+                            <span>🏛️ สถานที่สำคัญ / จุดทำธุระ</span>
+                        </div>
+                        <div class="chips-container">
+                            <button type="button" class="chip-btn" data-dest="ศาลากลาง จ.เพชรบุรี" onclick="toggleDestination('manual-destination', 'ศาลากลาง จ.เพชรบุรี')">🏛️ ศาลากลาง จ.เพชรบุรี</button>
+                            <button type="button" class="chip-btn" data-dest="กระทรวงพาณิชย์ (นนทบุรี)" onclick="toggleDestination('manual-destination', 'กระทรวงพาณิชย์ (นนทบุรี)')">🏢 กระทรวงพาณิชย์</button>
+                            <button type="button" class="chip-btn" data-dest="ไปรษณีย์" onclick="toggleDestination('manual-destination', 'ไปรษณีย์')">📮 ไปรษณีย์</button>
+                            <button type="button" class="chip-btn" data-dest="ตรวจตลาดสด" onclick="toggleDestination('manual-destination', 'ตรวจตลาดสด')">🛒 ตรวจตลาดสด</button>
+                            <button type="button" class="chip-btn" data-dest="ธนาคาร" onclick="toggleDestination('manual-destination', 'ธนาคาร')">🏦 ธนาคาร</button>
+                        </div>
+                    </div>
+
+                    <!-- Group 2: อำเภอในเพชรบุรี (Scrollbar แนวนอน ทั้ง 8 อำเภอ) -->
+                    <div class="chips-category">
+                        <div class="chips-category-title">
+                            <span>🗺️ อำเภอใน จ.เพชรบุรี (เลื่อนแนวนอนได้ 👉)</span>
+                        </div>
+                        <div class="chips-scroll-container">
+                            <button type="button" class="chip-btn" data-dest="อ.เมืองเพชรบุรี" onclick="toggleDestination('manual-destination', 'อ.เมืองเพชรบุรี')">📍 อ.เมืองเพชรบุรี</button>
+                            <button type="button" class="chip-btn" data-dest="อ.ชะอำ" onclick="toggleDestination('manual-destination', 'อ.ชะอำ')">🏖️ อ.ชะอำ</button>
+                            <button type="button" class="chip-btn" data-dest="อ.ท่ายาง" onclick="toggleDestination('manual-destination', 'อ.ท่ายาง')">📍 อ.ท่ายาง</button>
+                            <button type="button" class="chip-btn" data-dest="อ.บ้านลาด" onclick="toggleDestination('manual-destination', 'อ.บ้านลาด')">📍 อ.บ้านลาด</button>
+                            <button type="button" class="chip-btn" data-dest="อ.บ้านแหลม" onclick="toggleDestination('manual-destination', 'อ.บ้านแหลม')">🦐 อ.บ้านแหลม</button>
+                            <button type="button" class="chip-btn" data-dest="อ.เขาย้อย" onclick="toggleDestination('manual-destination', 'อ.เขาย้อย')">⛰️ อ.เขาย้อย</button>
+                            <button type="button" class="chip-btn" data-dest="อ.แก่งกระจาน" onclick="toggleDestination('manual-destination', 'อ.แก่งกระจาน')">🌲 อ.แก่งกระจาน</button>
+                            <button type="button" class="chip-btn" data-dest="อ.หนองหญ้าปล้อง" onclick="toggleDestination('manual-destination', 'อ.หนองหญ้าปล้อง')">🌾 อ.หนองหญ้าปล้อง</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ</label>
@@ -562,6 +595,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.0.1"></script>
+    <script src="/js/app.js?v=2.1.0"></script>
 </body>
 </html>
