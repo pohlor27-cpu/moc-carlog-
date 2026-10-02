@@ -42,20 +42,17 @@ def extract_exif_datetime(image_bytes: bytes) -> dict:
 
 def optimize_image_for_ai(image_bytes: bytes) -> tuple[bytes, str]:
     """
-    Auto-rotates image (EXIF transpose) and resizes to optimal dimension (max 1600px)
-    to guarantee fast AI processing and prevent payload timeout.
+    Auto-rotates image (EXIF transpose) and resizes to max 1280px
+    to guarantee fast AI processing.
     """
     try:
         image = Image.open(io.BytesIO(image_bytes))
-        # Auto transpose rotation based on EXIF tag
         image = ImageOps.exif_transpose(image)
         
-        # Convert RGBA/P to RGB if needed
         if image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
             
-        # Resize if larger than 1600px
-        max_dim = 1600
+        max_dim = 1280
         if max(image.size) > max_dim:
             image.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
             
@@ -69,7 +66,7 @@ def optimize_image_for_ai(image_bytes: bytes) -> tuple[bytes, str]:
 
 def parse_clean_json(text: str) -> dict:
     """
-    Safely parses JSON from AI response, stripping markdown code blocks.
+    Safely parses JSON from AI response.
     """
     clean_text = text.strip()
     if clean_text.startswith("```json"):
@@ -97,7 +94,7 @@ def analyze_dashboard_image(image_bytes: bytes, mime_type: str = "image/jpeg", a
     extracted_time = exif_result["time"]
     dt_source = exif_result["source"]
 
-    # 2. Optimize and auto-rotate image for AI
+    # 2. Optimize image
     optimized_bytes, opt_mime = optimize_image_for_ai(image_bytes)
 
     # 3. Check Gemini API Key
@@ -105,45 +102,48 @@ def analyze_dashboard_image(image_bytes: bytes, mime_type: str = "image/jpeg", a
     
     if not gemini_key:
         return {
-            "success": True,
+            "success": False,
             "mileage": None,
             "extracted_date": extracted_date,
             "extracted_time": extracted_time,
             "date_time_source": dt_source,
-            "note": "⚠️ ยังไม่ได้ใส่ GEMINI_API_KEY ใน Render (กรุณาพิมพ์เลขไมล์เอง)"
+            "note": "⚠️ ยังไม่ได้ใส่ GEMINI_API_KEY ใน Render"
         }
 
-    # Clean key if there are accidental spaces
     gemini_key = gemini_key.strip()
 
-    models_to_try = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    # List of API Endpoints and Models to try in sequence
+    endpoints_to_try = [
+        ("v1beta", "gemini-1.5-flash-latest"),
+        ("v1beta", "gemini-1.5-flash"),
+        ("v1", "gemini-1.5-flash"),
+        ("v1beta", "gemini-2.0-flash"),
+        ("v1beta", "gemini-2.0-flash-exp"),
+        ("v1beta", "gemini-1.5-flash-8b"),
+        ("v1beta", "gemini-1.5-pro"),
+    ]
     
     prompt = """
-You are an expert OCR system specialized in vehicle instrument clusters, dashboards, and digital odometers.
-Look at this dashboard photo very carefully.
+Look at this vehicle dashboard/instrument cluster photo very carefully.
+Find the TOTAL ODOMETER MILEAGE in kilometers:
+- Look at the central digital screen, LCD display, or odometer box (often labeled ODO or next to km, e.g. ODO 65650 km, 52204, etc.).
+- Output the exact total odometer reading integer.
+- Also look for digital clock time if visible (e.g. 10:57).
 
-Find the TOTAL ODOMETER MILEAGE (in kilometers):
-- Look at the central digital screen, LCD display, or the odometer area at the bottom of the speedometer/cluster.
-- Find the total vehicle distance number (usually 4 to 6 digits, e.g. 52204, 63941, 114520, etc., often next to "km" or "ODO").
-- Do not confuse with trip meter (Trip A/B) unless it is the only mileage displayed.
-- Also look for digital clock time (e.g. 10:05, 08:30) and date if displayed.
-
-Output strictly valid JSON with this exact schema:
+Return strictly JSON format only:
 {
-  "mileage": 63941,
-  "clock_time": "10:05",
-  "date": null,
-  "confidence": "high",
-  "all_numbers_seen": ["63941", "31°C", "10:05"]
+  "mileage": 65650,
+  "clock_time": "10:57",
+  "confidence": "high"
 }
 """
 
     b64_image = base64.b64encode(optimized_bytes).decode('utf-8')
     error_details = []
 
-    for model_name in models_to_try:
+    for api_ver, model_name in endpoints_to_try:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+            url = f"https://generativelanguage.googleapis.com/{api_ver}/models/{model_name}:generateContent?key={gemini_key}"
             headers = {"Content-Type": "application/json"}
             payload = {
                 "contents": [
@@ -160,7 +160,6 @@ Output strictly valid JSON with this exact schema:
                     }
                 ],
                 "generationConfig": {
-                    "response_mime_type": "application/json",
                     "temperature": 0.1
                 }
             }
@@ -179,14 +178,9 @@ Output strictly valid JSON with this exact schema:
                     if digits:
                         mileage_int = int(digits)
 
-                # Visual clock
                 if parsed.get("clock_time") and not extracted_time:
                     extracted_time = parsed.get("clock_time")
                     dt_source = "หน้าปัดรถยนต์"
-                
-                if parsed.get("date") and not extracted_date:
-                    extracted_date = parsed.get("date")
-                    dt_source = "วันที่บนภาพ"
 
                 return {
                     "success": True,
@@ -200,17 +194,15 @@ Output strictly valid JSON with this exact schema:
 
         except urllib.error.HTTPError as he:
             err_body = he.read().decode('utf-8', errors='ignore')
-            error_details.append(f"HTTP {he.code}: {err_body[:80]}")
+            error_details.append(f"{model_name}({api_ver}): HTTP {he.code}")
         except Exception as e:
-            error_details.append(str(e))
+            error_details.append(f"{model_name}: {str(e)}")
 
-    # Return error feedback clearly
-    combined_err = " | ".join(error_details)
     return {
         "success": False,
         "mileage": None,
         "extracted_date": extracted_date,
         "extracted_time": extracted_time,
         "date_time_source": dt_source,
-        "note": f"ข้อผิดพลาดจาก AI: {combined_err}" if combined_err else "ไม่สามารถเชื่อมต่อ AI ได้"
+        "note": f"ข้อผิดพลาดจาก AI: {' | '.join(error_details[:3])}"
     }
