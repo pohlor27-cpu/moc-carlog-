@@ -33,16 +33,24 @@ def init_db():
         )
     """)
 
-    # Vehicles table (Vehicles in fleet)
+    # Vehicles table (Vehicles in fleet with Primary Responsible Driver)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS vehicles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             license_plate TEXT NOT NULL UNIQUE,
             model TEXT,
             current_mileage INTEGER DEFAULT 0,
+            primary_driver_id INTEGER DEFAULT 1,
             is_active INTEGER DEFAULT 1
         )
     """)
+
+    # Check and migrate primary_driver_id column if needed
+    cursor.execute("PRAGMA table_info(vehicles)")
+    columns = [row["name"] for row in cursor.fetchall()]
+    if "primary_driver_id" not in columns:
+        cursor.execute("ALTER TABLE vehicles ADD COLUMN primary_driver_id INTEGER DEFAULT 1")
+        cursor.execute("UPDATE vehicles SET primary_driver_id = id WHERE id IN (1, 2, 3, 4)")
 
     # Trips table (Logs conforming to แบบ 4)
     cursor.execute("""
@@ -101,12 +109,12 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM vehicles")
     if cursor.fetchone()[0] == 0:
         default_vehicles = [
-            ("ขก 225 นนทบุรี", "รถประจำสำนักงาน (ขก 225)", 52204),
-            ("กอ 409 นนทบุรี", "รถประจำสำนักงาน (กอ 409)", 0),
-            ("ขก 192 นนทบุรี", "รถประจำสำนักงาน (ขก 192)", 0),
-            ("นจ 4648 นนทบุรี", "รถประจำสำนักงาน (นจ 4648)", 0),
+            ("ขก 225 นนทบุรี", "รถประจำสำนักงาน (ขก 225)", 52204, 1),
+            ("กอ 409 นนทบุรี", "รถประจำสำนักงาน (กอ 409)", 0, 2),
+            ("ขก 192 นนทบุรี", "รถประจำสำนักงาน (ขก 192)", 0, 3),
+            ("นจ 4648 นนทบุรี", "รถประจำสำนักงาน (นจ 4648)", 0, 4),
         ]
-        cursor.executemany("INSERT INTO vehicles (license_plate, model, current_mileage) VALUES (?, ?, ?)", default_vehicles)
+        cursor.executemany("INSERT INTO vehicles (license_plate, model, current_mileage, primary_driver_id) VALUES (?, ?, ?, ?)", default_vehicles)
 
     conn.commit()
     conn.close()

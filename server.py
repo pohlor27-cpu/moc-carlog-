@@ -182,14 +182,20 @@ def get_active_trips():
     conn = database.get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT t.*, v.license_plate, v.model as vehicle_model, d.name as driver_name, d.nickname as driver_nickname
+        SELECT t.*, v.license_plate, v.model as vehicle_model, v.primary_driver_id, d.name as base_driver_name
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.id
         JOIN drivers d ON t.driver_id = d.id
         WHERE t.status = 'departed'
         ORDER BY t.id DESC
     """)
-    active_trips = [dict(row) for row in cursor.fetchall()]
+    active_trips = []
+    for row in cursor.fetchall():
+        trip = dict(row)
+        is_ad_hoc = (trip["driver_id"] != trip.get("primary_driver_id"))
+        trip["is_ad_hoc"] = is_ad_hoc
+        trip["driver_name"] = f"{trip['base_driver_name']} (ผู้ขับขี่เฉพาะกิจ)" if is_ad_hoc else trip['base_driver_name']
+        active_trips.append(trip)
     conn.close()
     return {"active_trips": active_trips}
 
@@ -380,7 +386,7 @@ def get_trips(vehicle_id: Optional[int] = None, month: Optional[str] = None):
     cursor = conn.cursor()
     
     query = """
-        SELECT t.*, v.license_plate, v.model as vehicle_model, d.name as driver_name, d.nickname as driver_nickname
+        SELECT t.*, v.license_plate, v.model as vehicle_model, v.primary_driver_id, d.name as base_driver_name
         FROM trips t
         JOIN vehicles v ON t.vehicle_id = v.id
         JOIN drivers d ON t.driver_id = d.id
@@ -398,7 +404,13 @@ def get_trips(vehicle_id: Optional[int] = None, month: Optional[str] = None):
     query += " ORDER BY t.depart_date DESC, t.depart_time DESC, t.id DESC"
     
     cursor.execute(query, params)
-    trips = [dict(row) for row in cursor.fetchall()]
+    trips = []
+    for row in cursor.fetchall():
+        trip = dict(row)
+        is_ad_hoc = (trip["driver_id"] != trip.get("primary_driver_id"))
+        trip["is_ad_hoc"] = is_ad_hoc
+        trip["driver_name"] = f"{trip['base_driver_name']} (ผู้ขับขี่เฉพาะกิจ)" if is_ad_hoc else trip['base_driver_name']
+        trips.append(trip)
     conn.close()
     return {"trips": trips}
 
@@ -523,14 +535,21 @@ def get_form4_report(vehicle_id: int, month: str):
         
     # Get all trips for this vehicle in the requested month
     cursor.execute("""
-        SELECT t.*, d.name as driver_name
+        SELECT t.*, d.name as base_driver_name
         FROM trips t
         JOIN drivers d ON t.driver_id = d.id
         WHERE t.vehicle_id = ? AND t.depart_date LIKE ?
         ORDER BY t.depart_date ASC, t.depart_time ASC, t.id ASC
     """, (vehicle_id, f"{month}%"))
     
-    trips = [dict(row) for row in cursor.fetchall()]
+    trips = []
+    primary_driver_id = vehicle["primary_driver_id"] if "primary_driver_id" in vehicle.keys() else 1
+    for row in cursor.fetchall():
+        t = dict(row)
+        is_ad_hoc = (t["driver_id"] != primary_driver_id)
+        t["is_ad_hoc"] = is_ad_hoc
+        t["driver_name"] = f"{t['base_driver_name']} (ผู้ขับขี่เฉพาะกิจ)" if is_ad_hoc else t['base_driver_name']
+        trips.append(t)
     
     # Calculate previous month starting mileage
     prev_month_mileage = 0
@@ -565,6 +584,11 @@ def get_form4_report(vehicle_id: int, month: str):
         thai_year = ""
         prev_month_label = "กันยายน 2569"
 
+    # Get Primary Driver Name for Signature line
+    cursor.execute("SELECT name FROM drivers WHERE id = ?", (primary_driver_id,))
+    p_driver = cursor.fetchone()
+    primary_driver_name = p_driver["name"] if p_driver else "กฤษณพัฒน์ แสงหล้า"
+
     conn.close()
     
     return {
@@ -580,7 +604,7 @@ def get_form4_report(vehicle_id: int, month: str):
             "total_trips": total_trips,
             "total_distance_km": total_distance,
             "total_fuel_liters": round(total_fuel, 2),
-            "driver_name": trips[-1]["driver_name"] if trips else "กฤษณพัฒน์ แสงหล้า"
+            "driver_name": primary_driver_name
         }
     }
 

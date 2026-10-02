@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.6.1">
+    <link rel="stylesheet" href="/css/style.css?v=2.7.0">
 </head>
 <body>
 
@@ -158,7 +158,13 @@
                 <!-- Vehicle Selection -->
                 <div class="form-group">
                     <label class="form-label">เลือกรถยนต์ราชการ</label>
-                    <select id="depart-vehicle" class="form-select" required></select>
+                    <select id="depart-vehicle" class="form-select" required onchange="onDepartVehicleChange(this.value)"></select>
+                </div>
+
+                <!-- Driver Selection (พร้อมป้าย ผู้ขับขี่เฉพาะกิจ อัตโนมัติ) -->
+                <div class="form-group">
+                    <label class="form-label">พนักงานขับรถในเที่ยวนี้</label>
+                    <select id="depart-driver" class="form-select" required></select>
                 </div>
 
                 <!-- Continuous Trip Indicator Badge -->
@@ -404,7 +410,12 @@
                 
                 <div class="form-group">
                     <label class="form-label">รถยนต์ราชการ</label>
-                    <select id="manual-vehicle" class="form-select" required></select>
+                    <select id="manual-vehicle" class="form-select" required onchange="onManualVehicleChange(this.value)"></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">พนักงานขับรถในเที่ยวนี้</label>
+                    <select id="manual-driver" class="form-select" required></select>
                 </div>
 
                 <!-- ออกเดินทาง -->
@@ -820,6 +831,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.6.1"></script>
+    <script src="/js/app.js?v=2.7.0"></script>
 </body>
 </html>

@@ -315,23 +315,77 @@ function renderHistoryTable() {
     }).join("");
 }
 
+function getDriverOptionsHtml(vehicleId, selectedDriverId = null) {
+    const vId = parseInt(vehicleId) || 1;
+    const vehicle = appState.vehicles.find(v => v.id === vId);
+    const primaryDriverId = vehicle ? (vehicle.primary_driver_id || vehicle.id) : 1;
+    
+    return appState.drivers.map(d => {
+        const isPrimary = (d.id === primaryDriverId);
+        const label = isPrimary ? `${d.name} (คนขับประจำรถ)` : `${d.name} (ผู้ขับขี่เฉพาะกิจ)`;
+        const isSel = selectedDriverId ? (d.id === parseInt(selectedDriverId)) : isPrimary;
+        return `<option value="${d.id}" ${isSel ? 'selected' : ''}>${label}</option>`;
+    }).join("");
+}
+
+function onDepartVehicleChange(vehicleId) {
+    const vId = parseInt(vehicleId);
+    const vehicle = appState.vehicles.find(v => v.id === vId);
+    const mileage = vehicle ? (vehicle.current_mileage || 0) : 0;
+    
+    document.getElementById("depart-mileage").value = mileage;
+    
+    const driverSelect = document.getElementById("depart-driver");
+    if (driverSelect) {
+        driverSelect.innerHTML = getDriverOptionsHtml(vId, appState.selectedDriverId);
+    }
+
+    const badge = document.getElementById("depart-continuous-badge");
+    const badgeMileage = document.getElementById("depart-continuous-mileage");
+    if (badge && badgeMileage) {
+        badgeMileage.innerText = Number(mileage).toLocaleString();
+        badge.style.display = mileage > 0 ? "flex" : "none";
+    }
+}
+
+function onManualVehicleChange(vehicleId) {
+    const vId = parseInt(vehicleId);
+    const vehicle = appState.vehicles.find(v => v.id === vId);
+    const curMileage = vehicle ? (vehicle.current_mileage || 0) : 0;
+    
+    document.getElementById("manual-depart-mileage").value = curMileage;
+    document.getElementById("manual-arrive-mileage").value = curMileage ? curMileage + 10 : 0;
+    updateManualDistanceCalc();
+    
+    const driverSelect = document.getElementById("manual-driver");
+    if (driverSelect) {
+        driverSelect.innerHTML = getDriverOptionsHtml(vId, appState.selectedDriverId);
+    }
+}
+
 // ----------------- Modal Controls -----------------
 
 function openDepartModal() {
     document.getElementById("depart-date").value = getTodayInputFormat();
     document.getElementById("depart-time").value = getTimeNow();
     
-    // Set default mileage from selected vehicle
+    // Set default mileage and driver from selected vehicle
     const vehicleSelect = document.getElementById("depart-vehicle");
     if (vehicleSelect && appState.selectedVehicleId) {
         vehicleSelect.value = appState.selectedVehicleId;
     }
     
-    const selectedVehId = vehicleSelect ? parseInt(vehicleSelect.value) : appState.selectedVehicleId;
+    const selectedVehId = vehicleSelect ? parseInt(vehicleSelect.value) : (appState.selectedVehicleId || 1);
     const vehicle = appState.vehicles.find(v => v.id === selectedVehId) || appState.vehicles[0];
     const mileage = vehicle ? (vehicle.current_mileage || 0) : 0;
     
     document.getElementById("depart-mileage").value = mileage;
+    
+    // Populate driver dropdown with Primary vs Ad-Hoc designation
+    const driverSelect = document.getElementById("depart-driver");
+    if (driverSelect) {
+        driverSelect.innerHTML = getDriverOptionsHtml(selectedVehId, appState.selectedDriverId);
+    }
     
     // Show continuous trip badge if mileage exists
     const badge = document.getElementById("depart-continuous-badge");
@@ -438,9 +492,15 @@ function openManualModal() {
         manualVehSelect.value = appState.selectedVehicleId;
     }
     
-    const selectedVehId = manualVehSelect ? parseInt(manualVehSelect.value) : appState.selectedVehicleId;
+    const selectedVehId = manualVehSelect ? parseInt(manualVehSelect.value) : (appState.selectedVehicleId || 1);
     const vehicle = appState.vehicles.find(v => v.id === selectedVehId) || appState.vehicles[0];
     const curMileage = vehicle ? (vehicle.current_mileage || 0) : 0;
+    
+    // Populate driver dropdown with Primary vs Ad-Hoc designation
+    const driverSelect = document.getElementById("manual-driver");
+    if (driverSelect) {
+        driverSelect.innerHTML = getDriverOptionsHtml(selectedVehId, appState.selectedDriverId);
+    }
     
     document.getElementById("manual-depart-mileage").value = curMileage;
     document.getElementById("manual-arrive-mileage").value = curMileage ? curMileage + 10 : 0;
@@ -476,7 +536,7 @@ async function submitManualTrip(e) {
 
     const formData = new FormData();
     formData.append("vehicle_id", document.getElementById("manual-vehicle").value);
-    formData.append("driver_id", appState.selectedDriverId || 1);
+    formData.append("driver_id", document.getElementById("manual-driver")?.value || appState.selectedDriverId || 1);
     formData.append("depart_date", document.getElementById("manual-depart-date").value);
     formData.append("depart_time", document.getElementById("manual-depart-time").value);
     formData.append("depart_mileage", document.getElementById("manual-depart-mileage").value);
@@ -719,7 +779,7 @@ async function submitDeparture(e) {
 
     const formData = new FormData();
     formData.append("vehicle_id", document.getElementById("depart-vehicle").value);
-    formData.append("driver_id", appState.selectedDriverId || 1);
+    formData.append("driver_id", document.getElementById("depart-driver")?.value || appState.selectedDriverId || 1);
     formData.append("depart_date", document.getElementById("depart-date").value);
     formData.append("depart_time", document.getElementById("depart-time").value);
     formData.append("depart_mileage", document.getElementById("depart-mileage").value);
@@ -1115,9 +1175,15 @@ function openEditTripModal(tripId) {
     
     // Vehicle & Driver
     const vehSelect = document.getElementById("edit-trip-vehicle");
-    if (vehSelect) vehSelect.value = trip.vehicle_id;
+    if (vehSelect) {
+        vehSelect.value = trip.vehicle_id;
+        vehSelect.onchange = (e) => {
+            const drvSel = document.getElementById("edit-trip-driver");
+            if (drvSel) drvSel.innerHTML = getDriverOptionsHtml(e.target.value, trip.driver_id);
+        };
+    }
     const drvSelect = document.getElementById("edit-trip-driver");
-    if (drvSelect) drvSelect.value = trip.driver_id;
+    if (drvSelect) drvSelect.innerHTML = getDriverOptionsHtml(trip.vehicle_id, trip.driver_id);
 
     // Depart Info
     document.getElementById("edit-trip-depart-date").value = trip.depart_date || getTodayInputFormat();
