@@ -205,3 +205,6 @@ erDiagram
 4. **Parallel Run & Verification Period (30 Days / 1 Billing Cycle):**
    - The digital system runs in parallel with traditional paper logbooks for 30 days.
    - At month-end, the generated Form 4 report is reconciled 1:1 against paper records (mileage, trips, fuel volume) to guarantee 100% data integrity before full paperless decommission.
+5. **Moderator (โม) Operational Workflow & Time Integrity:**
+   - **Document Cross-Check:** Physical vehicle request forms ("ใบขอใช้รถ") submitted to the Moderator act as a natural cross-check to gently remind drivers to log trips.
+   - **Time Integrity:** Official Form 4 reports strictly reflect the driver-entered operational trip time (`depart_time`, `arrive_time`), decoupled from network/server upload timestamps (`created_at`). This ensures full compliance even when trips are uploaded after returning from remote offline zones.
