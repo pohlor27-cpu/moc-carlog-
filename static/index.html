@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>ระบบบันทึกการใช้รถราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัด</title>
-    <link rel="stylesheet" href="/css/style.css?v=2.1.0">
+    <link rel="stylesheet" href="/css/style.css?v=2.1.1">
 </head>
 <body>
 
@@ -71,7 +71,7 @@
                 <div class="big-btn-title">บันทึกเวลาออก</div>
                 <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์ออก</div>
             </button>
-            <button class="big-btn big-btn-arrive" onclick="openArriveModal(null)">
+            <button class="big-btn big-btn-arrive" onclick="openArriveModal()">
                 <div class="big-btn-icon">🏁</div>
                 <div class="big-btn-title">บันทึกเวลากลับ</div>
                 <div class="big-btn-sub">ถ่ายรูป / พิมพ์ไมล์กลับ</div>
@@ -283,6 +283,12 @@
             </div>
             <form onsubmit="submitArrival(event)">
                 
+                <!-- Active Trip Selector -->
+                <div class="form-group" id="arrive-trip-select-group">
+                    <label class="form-label" style="color: #047857; font-weight: 700;">🚗 เลือกเที่ยวรถที่กำลังกลับถึง สนง.:</label>
+                    <select id="arrive-trip-select" class="form-select" onchange="onArriveTripSelectChange(this.value)" style="border-color: #a7f3d0; background: #f0fdf4; font-weight: 600;"></select>
+                </div>
+
                 <div id="arrive-trip-info" style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 0.9rem; margin-bottom: 16px;"></div>
 
                 <!-- Dual Camera / Gallery Buttons & AI OCR Box -->
@@ -595,6 +601,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.1.0"></script>
+    <script src="/js/app.js?v=2.1.1"></script>
 </body>
 </html>

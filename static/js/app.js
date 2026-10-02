@@ -330,27 +330,71 @@ function closeDepartModal() {
     document.getElementById("modal-depart").classList.remove("open");
 }
 
-function openArriveModal(tripId) {
+function openArriveModal(tripId = null) {
+    if (!appState.activeTrips || appState.activeTrips.length === 0) {
+        if (confirm("⚠️ ขณะนี้ยังไม่มีรถคันใดอยู่ในสถานะ 'กำลังเดินทาง' ครับ (ยังไม่ได้กด '🚗 บันทึกเวลาออก')\n\n👉 ต้องการเปิดหน้า '✏️ กรอกเลขไมล์เอง' เพื่อบันทึกทั้งเที่ยวในครั้งเดียวหรือไม่ครับ?")) {
+            openManualModal();
+        }
+        return;
+    }
+
+    const select = document.getElementById("arrive-trip-select");
+    if (select) {
+        select.innerHTML = appState.activeTrips.map(t => 
+            `<option value="${t.id}">🚗 ${t.license_plate} (${t.driver_nickname || t.driver_name}) ➔ ${t.destination} (ออก ${t.depart_time} น.)</option>`
+        ).join("");
+    }
+
+    let targetTripId = tripId;
+    if (!targetTripId) {
+        // Auto-match current selected driver or vehicle
+        const matched = appState.activeTrips.find(t => t.vehicle_id === appState.selectedVehicleId)
+            || appState.activeTrips.find(t => t.driver_id === appState.selectedDriverId)
+            || appState.activeTrips[0];
+        targetTripId = matched ? matched.id : appState.activeTrips[0].id;
+    }
+
+    if (select) select.value = targetTripId;
+    selectArriveTrip(targetTripId);
+
+    document.getElementById("arrive-date").value = getTodayInputFormat();
+    document.getElementById("arrive-time").value = getTimeNow();
+    document.getElementById("arrive-fuel-liters").value = "";
+    document.getElementById("arrive-fuel-authorizer").value = "";
+    
+    resetPhotoBox("arrive");
+    
+    document.getElementById("modal-arrive").classList.add("open");
+}
+
+function onArriveTripSelectChange(val) {
+    const tripId = parseInt(val);
+    if (tripId) selectArriveTrip(tripId);
+}
+
+function selectArriveTrip(tripId) {
     appState.currentArriveTripId = tripId;
     const trip = appState.activeTrips.find(t => t.id === tripId) || appState.historyTrips.find(t => t.id === tripId);
     
     if (trip) {
         document.getElementById("arrive-trip-info").innerHTML = `
-            <strong>รถ:</strong> ${trip.license_plate} | <strong>สถานที่ไป:</strong> ${trip.destination} <br>
-            <strong>ไมล์ตอนออก:</strong> <span id="arrive-depart-mileage-val">${trip.depart_mileage}</span> กม.
+            <div style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
+                🚗 <strong>รถทะเบียน:</strong> ${trip.license_plate} (${trip.driver_nickname || trip.driver_name})
+            </div>
+            <div style="color: #475569; font-size: 0.88rem;">
+                📍 <strong>สถานที่ไป:</strong> ${trip.destination} | ⏰ <strong>เวลาออก:</strong> ${trip.depart_time} น. (${trip.depart_date})
+            </div>
+            <div style="color: #2563eb; font-weight: 700; margin-top: 4px; font-size: 0.95rem;">
+                🔢 <strong>เลขไมล์ตอนออก:</strong> <span id="arrive-depart-mileage-val">${trip.depart_mileage}</span> กม.
+            </div>
         `;
+        
+        const arriveMileageInput = document.getElementById("arrive-mileage");
+        if (arriveMileageInput && (!arriveMileageInput.value || parseInt(arriveMileageInput.value) <= trip.depart_mileage)) {
+            arriveMileageInput.value = trip.depart_mileage;
+        }
+        updateDistanceCalc();
     }
-    
-    document.getElementById("arrive-date").value = getTodayInputFormat();
-    document.getElementById("arrive-time").value = getTimeNow();
-    document.getElementById("arrive-mileage").value = trip ? trip.depart_mileage : "";
-    document.getElementById("arrive-fuel-liters").value = "";
-    document.getElementById("arrive-fuel-authorizer").value = "";
-    
-    resetPhotoBox("arrive");
-    updateDistanceCalc();
-    
-    document.getElementById("modal-arrive").classList.add("open");
 }
 
 function closeArriveModal() {
@@ -674,7 +718,10 @@ async function submitDeparture(e) {
 
 async function submitArrival(e) {
     e.preventDefault();
-    if (!appState.currentArriveTripId) return;
+    if (!appState.currentArriveTripId) {
+        alert("⚠️ ไม่พบข้อมูลเที่ยวรถที่กำลังบันทึก กรุณาเลือกเที่ยวรถที่ต้องการบันทึกเวลากลับ");
+        return;
+    }
 
     const submitBtn = document.getElementById("btn-arrive-submit");
     submitBtn.disabled = true;
@@ -698,16 +745,18 @@ async function submitArrival(e) {
         });
         const result = await res.json();
         
-        if (result.status === "success") {
+        if (res.ok && result.status === "success") {
             closeArriveModal();
             await loadInitialData();
-            alert(`บันทึกเวลากลับสำเร็จ! ระยะทาง ${result.distance_km} กม.`);
+            alert(`✅ บันทึกเวลากลับสำเร็จเรียบร้อยครับ!\nระยะทางวิ่ง: ${result.distance_km.toLocaleString()} กม.`);
+        } else {
+            alert(`⚠️ เกิดข้อผิดพลาด: ${result.detail || result.message || 'ไม่สามารถบันทึกได้'}`);
         }
     } catch (e) {
-        alert("เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+        alert("⚠️ เกิดข้อผิดพลาดในการบันทึก: " + e.message);
     } finally {
         submitBtn.disabled = false;
-        submitBtn.innerText = "บันทึกเวลากลับ";
+        submitBtn.innerText = "💾 บันทึกเวลากลับ";
     }
 }
 
