@@ -142,17 +142,17 @@
                 <div class="grid grid-cols-2 gap-3">
                     <button onclick="openActionModal('depart')" class="bg-gradient-to-br from-[#0D3B66] to-[#08213B] text-white p-4 rounded-2xl shadow-lg border border-white/10 flex flex-col justify-between h-28 text-left tap-active">
                         <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-2xl">flight_takeoff</span>
+                            <span class="material-symbols-outlined text-2xl">directions_car</span>
                         </div>
                         <div>
-                            <div class="font-bold text-sm">1. ออกเดินทาง</div>
+                            <div class="font-bold text-sm">1. ขับรถออกเดินทาง</div>
                             <div class="text-[11px] text-slate-300">บันทึกไมล์ออก / กล้อง OCR</div>
                         </div>
                     </button>
 
                     <button onclick="openActionModal('return')" class="bg-gradient-to-br from-[#059669] to-[#065f46] text-white p-4 rounded-2xl shadow-lg border border-white/10 flex flex-col justify-between h-28 text-left tap-active">
                         <div class="w-10 h-10 rounded-xl bg-emerald-400/20 text-emerald-200 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-2xl">flag</span>
+                            <span class="material-symbols-outlined text-2xl">home_pin</span>
                         </div>
                         <div>
                             <div class="font-bold text-sm">2. กลับถึง สนง.</div>
@@ -488,7 +488,7 @@
             const box = document.getElementById('modal-box');
             modal.classList.remove('hidden');
 
-            let title = "1. บันทึกออกเดินทาง";
+            let title = "1. บันทึกขับรถออกเดินทาง";
             let content = `
                 <div class="space-y-3">
                     <div>
@@ -514,7 +514,7 @@
                     </div>
                     <div class="pt-2 flex gap-2">
                         <button onclick="closeModal()" class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 text-sm">ยกเลิก</button>
-                        <button onclick="submitDepart()" class="flex-1 py-3 bg-civic-navy hover:bg-civic-navy-dark text-white font-bold rounded-xl text-sm tap-active">บันทึกออกเดินทาง</button>
+                        <button onclick="submitDepart()" class="flex-1 py-3 bg-civic-navy hover:bg-civic-navy-dark text-white font-bold rounded-xl text-sm tap-active">บันทึกขับรถออกเดินทาง</button>
                     </div>
                 </div>
             `;
