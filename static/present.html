@@ -110,59 +110,21 @@
     .ag-pill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, #fff9 50%, transparent 65%); transform: translateX(-100%); }
     kbd { font-family: inherit; font-weight: 700; color: #10213d; background: linear-gradient(135deg, #fff1b8, #d4a84b); border-radius: .35em; padding: .05em .45em; box-shadow: 0 .15em 0 #9a6f1f; }
 
-    /* 9:16 diamond video container & showcase layout on closing slide */
-    .closing-info-side {
-      position: absolute;
-      left: 6em;
-      top: 5.5em;
-      bottom: 5.5em;
-      width: 56em;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: center;
-      gap: 1.1em;
-      text-align: left;
-      z-index: 2;
-    }
-    .closing-info-side > * {
+    /* 9:16 vertical diamond video in centered layout */
+    .diamond-center-916 {
       position: relative;
-      margin: 0;
-    }
-    .closing-info-side .ag-title {
-      text-align: left;
-      margin: 0;
-    }
-    .closing-info-side .ag-title span {
-      font-size: 3.1em;
-      text-align: left;
-    }
-    .closing-info-side .ag-title b {
-      font-size: 2.75em;
-      text-align: left;
-    }
-    .closing-info-side .ag-sub {
-      font-size: 1.8em;
-      color: #c9d6e8;
-      font-weight: 300;
-      text-align: left;
-    }
-
-    .diamond-frame-916 {
-      position: absolute;
-      right: 6em;
-      top: 5.5em;
-      height: 45.25em;
-      width: 25.45em; /* 45.25 * 9 / 16 (Exact 9:16 vertical proportion) */
+      height: 20em;
+      width: 11.25em; /* 20 * 9 / 16 (Exact 9:16 vertical proportion) */
       aspect-ratio: 9 / 16;
-      border-radius: 2em;
+      border-radius: 1.5em;
       overflow: hidden;
       background: #000;
       border: 2px solid #d4a84bcc;
-      box-shadow: 0 0 50px rgba(255, 215, 0, 0.45), 0 1.2em 3.5em rgba(0, 0, 0, 0.85);
-      z-index: 2;
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.45), 0 .8em 2.5em rgba(0, 0, 0, 0.7);
+      margin: 0 auto;
+      flex-shrink: 0;
     }
-    .diamond-video-916 {
+    .diamond-center-916 video {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -540,28 +502,22 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- SLIDE 10: CLOSING & 9:16 DIAMOND SHOWCASE  -->
+    <!-- SLIDE 10: CLOSING & CENTERED 9:16 DIAMOND  -->
     <!-- ========================================== -->
-    <section class="page" data-title="บทสรุป — วิดีโอไดมอนด์">
-      <div class="ag">
-        <!-- Narrative Side (Left Column) -->
-        <div class="closing-info-side">
-          <div class="ag-logo-gold pop" style="--d:.2s; font-size: 3.4em;">MOC</div>
-          <span class="ag-kicker pop" style="--d:.5s">สำนักงานพาณิชย์จังหวัดเพชรบุรี · กลุ่มยุทธศาสตร์และแผนงาน</span>
-          <h2 class="ag-title">
-            <span style="--d:.8s">มุ่งมั่นขับเคลื่อนงานราชการ</span>
-            <b style="--d:1.2s">ด้วยนวัตกรรมดิจิทัลเพื่อประชาชน</b>
-          </h2>
-          <p class="ag-sub up" style="--d:1.6s">ระบบบันทึกการใช้รถราชการ (แบบ 4) สู่ดิจิทัลเต็มรูปแบบ</p>
-          <div style="margin-top: 0.8em;">
-            <span class="ag-pill pop" style="--d:2.0s">ขอบพระคุณครับ · พร้อมเปิดรับคำแนะนำ</span>
-          </div>
+    <section class="page" data-title="บทสรุป — ขอบพระคุณครับ">
+      <div class="ag"><div class="ag-center" style="gap: 0.9em; inset: 0 0 1.5em;">
+        <!-- 9:16 Vertical Diamond Video on Top -->
+        <div class="diamond-center-916 pop" style="--d:.2s">
+          <video id="closing-diamond-video" src="/videos/diamond_logo.mp4" autoplay loop muted playsinline preload="auto"></video>
         </div>
-        <!-- 9:16 Full Height Diamond Video Frame (Right Column) -->
-        <div class="diamond-frame-916 pop" style="--d:.4s">
-          <video id="closing-diamond-video" src="/videos/diamond_logo.mp4" autoplay loop muted playsinline preload="auto" class="diamond-video-916"></video>
-        </div>
-      </div>
+        <span class="ag-kicker pop" style="--d:.5s">สำนักงานพาณิชย์จังหวัดเพชรบุรี · กลุ่มยุทธศาสตร์และแผนงาน</span>
+        <h2 class="ag-title">
+          <span style="--d:.8s">มุ่งมั่นขับเคลื่อนงานราชการ</span>
+          <b style="--d:1.2s">ด้วยนวัตกรรมดิจิทัลเพื่อประชาชน</b>
+        </h2>
+        <p class="ag-sub up" style="--d:1.6s">ขอบพระคุณครับ</p>
+        <span class="ag-pill pop" style="--d:2.0s">ระบบพร้อมให้บริการและต่อยอดเต็มรูปแบบ</span>
+      </div></div>
     </section>
 
   </main>
