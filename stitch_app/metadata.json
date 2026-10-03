@@ -1,0 +1,6 @@
+{
+  "name": "บันทึกการใช้รถราชการ แบบ 4",
+  "description": "ระบบบันทึกการใช้รถราชการ แบบ 4 สนง.พาณิชย์จังหวัดเพชรบุรี (Fleet Care & Trip Log)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
