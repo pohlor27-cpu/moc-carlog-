@@ -1034,13 +1034,13 @@
                 <button type="button" class="modal-close" onclick="closePinManageModal()">✕</button>
             </div>
 
-            <!-- Master Admin Vault Box (แสดงสิทธิ์ Master ของพี่ป๋อ) -->
+            <!-- Master Admin Vault Box (แสดงสิทธิ์ Master ผู้ดูแลระบบ) -->
             <div id="master-pin-vault-box" style="margin-bottom: 16px; background: linear-gradient(135deg, #fef3c7, #fde68a); border: 1px solid #f59e0b; border-radius: 12px; padding: 12px 14px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                     <strong style="color: #92400e; font-size: 0.92rem; display: flex; align-items: center; gap: 6px;">
-                        <span>👑</span> Master Vault (เฉพาะพี่ป๋อ)
+                        <span>👑</span> Master Vault (ผู้ดูแลระบบหลัก)
                     </strong>
-                    <span style="font-size: 0.78rem; background: #92400e; color: white; padding: 2px 7px; border-radius: 4px; font-weight: 600;">Master PIN: 2424</span>
+                    <span style="font-size: 0.78rem; background: #92400e; color: white; padding: 2px 7px; border-radius: 4px; font-weight: 600;">Super Admin Mode</span>
                 </div>
                 <div style="font-size: 0.88rem; color: #78350f; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                     <span>รหัส PIN เจ้าหน้าที่ปัจจุบัน:</span>
@@ -1051,10 +1051,10 @@
                 </div>
                 <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
                     <button type="button" class="chip-btn" onclick="resetModPinToDefault()" style="background: white; border-color: #f59e0b; color: #92400e; font-weight: 600; font-size: 0.8rem; width: 100%; justify-content: center; padding: 7px 8px;">
-                        🔄 รีเซ็ตรหัส PIN กลับเป็น 9999 ทันที
+                        🔄 รีเซ็ตรหัส PIN เจ้าหน้าที่กลับเป็นค่าเริ่มต้น
                     </button>
                     <button type="button" class="chip-btn" onclick="closePinManageModal(); openSettingsModal();" style="background: #1e293b; border-color: #0f172a; color: white; font-weight: 600; font-size: 0.82rem; width: 100%; justify-content: center; padding: 8px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
-                        ⚙️ ตั้งค่าระบบ &amp; เชื่อมต่อ Google Drive (เฉพาะพี่ป๋อ)
+                        ⚙️ ตั้งค่าระบบ &amp; เชื่อมต่อ Google Drive (ผู้ดูแลระบบ)
                     </button>
                 </div>
             </div>
@@ -1062,7 +1062,7 @@
             <!-- Change PIN Form -->
             <form id="form-change-pin" onsubmit="submitChangePin(event)">
                 <div class="form-group">
-                    <label class="form-label">รหัสผ่านปัจจุบัน (หรือใช้ Master PIN 2424)</label>
+                    <label class="form-label">รหัสผ่านปัจจุบัน (หรือ Master PIN)</label>
                     <input type="password" id="change-pin-curr" class="form-input" placeholder="ใส่รหัสปัจจุบัน" required autocomplete="off">
                 </div>
                 <div class="form-group">

@@ -110,6 +110,27 @@
     .ag-pill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, #fff9 50%, transparent 65%); transform: translateX(-100%); }
     kbd { font-family: inherit; font-weight: 700; color: #10213d; background: linear-gradient(135deg, #fff1b8, #d4a84b); border-radius: .35em; padding: .05em .45em; box-shadow: 0 .15em 0 #9a6f1f; }
 
+    /* diamond video container on closing slide */
+    .diamond-video-wrap {
+      width: 25em;
+      height: 14em;
+      border-radius: 1.4em;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      border: 1px solid #d4a84b99;
+      box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), 0 .8em 2.5em #0009;
+      position: relative;
+    }
+    .diamond-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
     /* steps (3 columns) */
     .steps { left: 5em; right: 5em; top: 20.5em; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4em; }
     .step { height: 26em; display: flex; flex-direction: column; gap: .8em; padding: 2em 1.8em; border-radius: 1.4em; background: linear-gradient(160deg, #15305a, #0c1f3b); border: 1px solid #d4a84b55; box-shadow: 0 .6em 2em #0006; }
@@ -259,8 +280,8 @@
           </div>
           <div class="key pop hot" style="--d:2.2s">
             <kbd>👑</kbd>
-            <span>Master Vault 2424</span>
-            <small>ความปลอดภัย 2 ชั้น รีเซ็ต PIN และสำรอง Google Drive</small>
+            <span>Master Vault</span>
+            <small>ระบบควบคุมความปลอดภัยสูงสุด และสำรอง Google Drive</small>
           </div>
         </div>
         <div class="ag-pillrow"><span class="ag-pill pop" style="--d:2.8s">ออกแบบตามแนวคิด Apple Design System เรียบหรู ใช้งานง่าย</span></div>
@@ -413,13 +434,13 @@
     <!-- ========================================== -->
     <!-- SLIDE 8: TWO-TIER SECURITY & MASTER VAULT  -->
     <!-- ========================================== -->
-    <section class="page" data-title="ความปลอดภัย Master Vault 2424">
+    <section class="page" data-title="ความปลอดภัย Master Vault">
       <div class="ag">
         <div class="ag-head">
           <span class="ag-kicker pop" style="--d:.3s">ความมั่นคงปลอดภัยสูงสุด</span>
           <h2 class="ag-title">
             <span style="--d:.5s">ระบบความปลอดภัย 2 ชั้น</span>
-            <b style="--d:.9s">และ Master Vault สิทธิ์เฉพาะพี่ป๋อ</b>
+            <b style="--d:.9s">และ Master Vault ผู้ดูแลระบบหลัก</b>
           </h2>
         </div>
         <div class="steps">
@@ -429,7 +450,7 @@
           </div>
           <div class="step up" style="--d:1.8s">
             <h3><i>2</i>Tier 2: Master Vault</h3>
-            <p>Master PIN (2424) สำหรับผู้ดูแลระบบสูงสุด ตรวจดูรหัสผ่าน และรีเซ็ตรหัสผ่านใน 1 คลิก</p>
+            <p>ระบบ Master สำหรับผู้ดูแลระบบสูงสุด ตรวจดูรหัสผ่าน และรีเซ็ตรหัสผ่านใน 1 คลิก</p>
           </div>
           <div class="step up" style="--d:2.3s">
             <h3><i>3</i>Zero Exposure</h3>
@@ -484,15 +505,17 @@
     <!-- SLIDE 10: CLOSING & THANK YOU              -->
     <!-- ========================================== -->
     <section class="page" data-title="บทสรุป — ขอบพระคุณครับ">
-      <div class="ag"><div class="ag-center">
-        <div class="ag-core ignite" style="--d:.2s"><span class="ag-ring"></span><span class="ag-ring"></span><span class="ag-bot"><i>🙏</i></span></div>
-        <span class="ag-kicker pop" style="--d:.7s">สำนักงานพาณิชย์จังหวัดเพชรบุรี</span>
+      <div class="ag"><div class="ag-center" style="gap: 1.0em;">
+        <div class="diamond-video-wrap pop" style="--d:.2s">
+          <video id="closing-diamond-video" src="/videos/diamond_logo.mp4" autoplay loop muted playsinline preload="auto" class="diamond-video"></video>
+        </div>
+        <span class="ag-kicker pop" style="--d:.6s">สำนักงานพาณิชย์จังหวัดเพชรบุรี · กลุ่มยุทธศาสตร์และแผนงาน</span>
         <h2 class="ag-title">
           <span style="--d:.9s">มุ่งมั่นขับเคลื่อนงานราชการ</span>
           <b style="--d:1.3s">ด้วยนวัตกรรมดิจิทัลเพื่อประชาชน</b>
         </h2>
-        <p class="ag-sub up" style="--d:1.8s">ขอบพระคุณครับ</p>
-        <span class="ag-pill pop" style="--d:2.3s">ระบบพร้อมให้บริการและต่อยอดเต็มรูปแบบ</span>
+        <p class="ag-sub up" style="--d:1.7s">ขอบพระคุณครับ</p>
+        <span class="ag-pill pop" style="--d:2.1s">ระบบพร้อมให้บริการและต่อยอดเต็มรูปแบบ</span>
       </div></div>
     </section>
 
@@ -551,6 +574,14 @@
       $('next').disabled = current === pages.length - 1;
       document.title = `${current + 1} · ${pages[current].dataset.title}`;
       if (location.hash !== '#' + (current + 1)) history.replaceState(null, '', '#' + (current + 1));
+      
+      // Auto-play active video on current slide
+      const activeVideo = pages[current].querySelector('video');
+      if (activeVideo) {
+        activeVideo.currentTime = 0;
+        activeVideo.play().catch(() => {});
+      }
+      
       wake();
     }
 
