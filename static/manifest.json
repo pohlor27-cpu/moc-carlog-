@@ -9,13 +9,13 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/images/moc_seal.png",
+      "src": "/images/moc_gothic_gold_transparent.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/images/moc_seal.png",
+      "src": "/images/moc_gothic_gold_transparent.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
