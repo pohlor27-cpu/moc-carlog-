@@ -63,66 +63,36 @@
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
     }
 
-    /* ---------- Mobile Portrait & Auto-Rotate Engine ---------- */
-    #rotate-hint { display: none; }
+    /* ---------- Auto-Landscape Engine for Mobile Portrait ---------- */
     @media (orientation: portrait) and (max-width: 900px) {
-      #rotate-hint {
-        position: fixed;
-        bottom: max(24px, env(safe-area-inset-bottom));
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 20;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 9px 18px;
-        border-radius: 999px;
-        background: #071426ee;
-        -webkit-backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
-        border: 1.5px solid #edc66dbb;
-        color: #f3d27a;
-        font-size: 13.5px;
-        font-weight: 600;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.7), 0 0 24px rgba(237,198,109,0.35);
-        cursor: pointer;
-        animation: floatHint 2.5s ease-in-out infinite;
-        white-space: nowrap;
-        transition: opacity .4s, transform .3s;
+      body {
+        overflow: hidden;
       }
-      #rotate-hint:active { transform: translateX(-50%) scale(0.95); }
-    }
-    @keyframes floatHint {
-      0%, 100% { transform: translate(-50%, 0); }
-      50% { transform: translate(-50%, -6px); }
-    }
-
-    /* Software 90-degree Landscape Rotation for mobile portrait */
-    body.force-landscape {
-      overflow: hidden;
-    }
-    body.force-landscape #stage {
-      position: fixed !important;
-      top: 50% !important;
-      left: 50% !important;
-      width: 100dvh !important;
-      height: 100dvw !important;
-      transform: translate(-50%, -50%) rotate(90deg) !important;
-      transform-origin: center center !important;
-    }
-    body.force-landscape .ag {
-      width: min(100dvh, 177.78dvw) !important;
-      aspect-ratio: 16 / 9;
-      font-size: min(1dvh, 1.7778dvw) !important;
-    }
-    body.force-landscape .controls {
-      top: max(12px, env(safe-area-inset-right));
-      right: max(12px, env(safe-area-inset-top));
-      transform: rotate(90deg);
-      transform-origin: top right;
-    }
-    body.force-landscape #rotate-hint {
-      display: none !important;
+      #stage {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        width: 100dvh !important;
+        height: 100dvw !important;
+        transform: translate(-50%, -50%) rotate(90deg) !important;
+        transform-origin: center center !important;
+      }
+      .ag {
+        width: min(100dvh, 177.78dvw) !important;
+        aspect-ratio: 16 / 9 !important;
+        font-size: min(1dvh, 1.7778dvw) !important;
+      }
+      .controls {
+        top: max(12px, env(safe-area-inset-right)) !important;
+        right: max(12px, env(safe-area-inset-top)) !important;
+        transform: rotate(90deg) !important;
+        transform-origin: top right !important;
+      }
+      dialog {
+        transform: rotate(90deg) !important;
+        max-width: 90dvh !important;
+        max-height: 85dvw !important;
+      }
     }
 
     /* ---------- slide stage: always 16:9, 1em = 1% of its width ---------- */
@@ -584,18 +554,11 @@
 
   </main>
 
-  <!-- Floating Landscape Rotate Hint for Portrait Mobile -->
-  <button id="rotate-hint" aria-label="หมุนเต็มจอแนวนอน">
-    <span>🔄</span>
-    <span>แตะเพื่อหมุนเต็มจอแนวนอน</span>
-  </button>
-
   <!-- Interactive Presentation Navigation Controls -->
   <nav class="controls" aria-label="ควบคุมการนำเสนอ">
     <button id="prev" aria-label="หน้าก่อนหน้า" title="หน้าก่อนหน้า (←)">←</button>
     <button id="choose" aria-label="เลือกหน้า" title="เลือกหน้า (G)"><span id="count" aria-live="polite"></span> ▾</button>
     <button id="next" aria-label="หน้าถัดไป" title="หน้าถัดไป (→ / Space)">→</button>
-    <button id="rotate-btn" title="หมุนแนวนอน (R)" aria-label="หมุนจอ">🔄</button>
     <button id="fullscreen" title="เต็มจอ (F)" aria-label="เต็มจอ">⛶</button>
   </nav>
 
@@ -606,7 +569,7 @@
       <button id="close" aria-label="ปิดรายการหน้า">✕</button>
     </header>
     <div class="grid" id="grid"></div>
-    <p class="hint">→ / Space / Enter / คลิก = หน้าถัดไป · ← = ย้อนกลับ · F = เต็มจอ · R = หมุนจอ · G = เลือกหน้า · Home / End = หน้าแรก / หน้าสุดท้าย · มือถือปัดซ้าย–ขวา</p>
+    <p class="hint">→ / Space / Enter / คลิก = หน้าถัดไป · ← = ย้อนกลับ · F = เต็มจอ · G = เลือกหน้า · Home / End = หน้าแรก / หน้าสุดท้าย · มือถือปัดซ้าย–ขวา</p>
   </dialog>
 
   <script>
@@ -670,37 +633,11 @@
       }
     }
 
-    let isRotated = false;
-    async function toggleRotate() {
-      isRotated = !isRotated;
-      document.body.classList.toggle('force-landscape', isRotated);
-      const btn = $('rotate-btn');
-      if (btn) {
-        btn.style.background = isRotated ? '#d4a84b' : '';
-        btn.style.color = isRotated ? '#071426' : '';
-        btn.title = isRotated ? 'กลับแนวเดิม (R)' : 'หมุนแนวนอน (R)';
-      }
-      try {
-        if (screen.orientation && screen.orientation.lock) {
-          if (isRotated) await screen.orientation.lock('landscape');
-          else await screen.orientation.unlock();
-        }
-      } catch (err) {}
-      wake();
-    }
-
     $('prev').onclick = () => show(current - 1);
     $('next').onclick = () => show(current + 1);
     $('choose').onclick = choose;
     $('close').onclick = () => $('picker').close();
     $('fullscreen').onclick = fullscreen;
-    if ($('rotate-btn')) $('rotate-btn').onclick = toggleRotate;
-    if ($('rotate-hint')) {
-      $('rotate-hint').onclick = toggleRotate;
-      setTimeout(() => {
-        if ($('rotate-hint')) $('rotate-hint').style.opacity = '0.4';
-      }, 5000);
-    }
     $('picker').addEventListener('close', wake);
     $('picker').addEventListener('click', e => {
       const r = $('picker').getBoundingClientRect();
@@ -717,7 +654,7 @@
         ArrowRight: next, ArrowDown: next, ' ': next, Enter: next, PageDown: next,
         ArrowLeft: prev, ArrowUp: prev, PageUp: prev,
         Home: () => show(0), End: () => show(pages.length - 1),
-        KeyF: fullscreen, KeyG: choose, KeyR: toggleRotate,
+        KeyF: fullscreen, KeyG: choose,
       };
       const action = actions[e.key] ?? actions[e.code];
       if (action) { e.preventDefault(); action(); }
