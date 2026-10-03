@@ -4,20 +4,33 @@ import re
 STITCH_SRC = os.path.join(os.path.dirname(__file__), "stitch_app", "src")
 OUTPUT_HTML = os.path.join(os.path.dirname(__file__), "static", "stitch_preview.html")
 
-def clean_tsx(content):
-    # Remove imports and exports
-    content = re.sub(r'import\s+.*?from\s+[\'"].*?[\'"];?', '', content)
-    content = re.sub(r'import\s+[\'"].*?[\'"];?', '', content)
-    content = re.sub(r'export\s+default\s+', '', content)
-    content = re.sub(r'export\s+(const|function|interface|type|enum)\s+', r'\1 ', content)
-    return content
+def clean_ts_to_js(code):
+    # Remove import/export
+    code = re.sub(r'import\s+.*?from\s+[\'"].*?[\'"];?', '', code)
+    code = re.sub(r'import\s+[\'"].*?[\'"];?', '', code)
+    code = re.sub(r'export\s+default\s+', '', code)
+    code = re.sub(r'export\s+(const|function|interface|type|enum|var|let)\s+', r'\1 ', code)
+    
+    # Remove interface and type definitions
+    code = re.sub(r'interface\s+\w+(\s+extends\s+\w+)?\s*\{[\s\S]*?\}\n?', '', code)
+    code = re.sub(r'type\s+\w+\s*=\s*[\s\S]*?;\n?', '', code)
+    
+    # Remove React.FC<...> annotations
+    code = re.sub(r':\s*React\.FC<[\w\s,<>]+>', '', code)
+    code = re.sub(r':\s*React\.\w+<[\w\s,<>]+>', '', code)
+    
+    # Remove useState<Type>(...)
+    code = re.sub(r'useState<[\w\s,<>|\[\]]+>', 'useState', code)
+    
+    # Remove as Type casts
+    code = re.sub(r'\s+as\s+[\w\s,<>|\[\]]+', '', code)
+    
+    return code
 
 def compile_stitch_app():
     # Read mockData
-    with open(os.path.join(STITCH_SRC, "types.ts"), "r", encoding="utf-8") as f:
-        types_code = clean_tsx(f.read())
     with open(os.path.join(STITCH_SRC, "data", "mockData.ts"), "r", encoding="utf-8") as f:
-        mock_code = clean_tsx(f.read())
+        mock_code = clean_ts_to_js(f.read())
         
     components = [
         "Toast.tsx",
@@ -42,30 +55,37 @@ def compile_stitch_app():
         path = os.path.join(STITCH_SRC, "components", comp)
         if os.path.exists(path):
             with open(path, "r", encoding="utf-8") as f:
-                comp_codes.append(f"/* === {comp} === */\n" + clean_tsx(f.read()))
+                comp_codes.append(f"/* === {comp} === */\n" + clean_ts_to_js(f.read()))
                 
     with open(os.path.join(STITCH_SRC, "App.tsx"), "r", encoding="utf-8") as f:
-        app_code = "/* === App.tsx === */\n" + clean_tsx(f.read())
+        app_code = "/* === App.tsx === */\n" + clean_ts_to_js(f.read())
 
     comp_joined = "\n".join(comp_codes)
-    all_ts = f"""
+    all_js = f"""
 const {{ useState, useEffect, useMemo, useRef, useCallback }} = React;
 
-{types_code}
 {mock_code}
 {comp_joined}
 {app_code}
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+try {{
+    const rootEl = document.getElementById('root');
+    if (rootEl) {{
+        const root = ReactDOM.createRoot(rootEl);
+        root.render(<App />);
+    }}
+}} catch (err) {{
+    console.error("Mount error:", err);
+    document.getElementById('root').innerHTML = '<div style="padding:20px; color:#ef4444; font-family:sans-serif;"><h3>⚠️ เกิดข้อผิดพลาดในการโหลด</h3><p>' + err.message + '</p></div>';
+}}
 """
 
     html_template = f"""<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบบันทึกการใช้รถยนต์ราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัดเพชรบุรี</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>บันทึกการใช้รถราชการ แบบ 4 - สนง.พาณิชย์จังหวัดเพชรบุรี</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,10 +141,24 @@ root.render(<App />);
         }}
     </script>
     
-    <!-- React, ReactDOM, Babel for in-browser JSX/TypeScript execution -->
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script>
+        window.onerror = function(msg, url, line, col, error) {{
+            console.error("Global JS Error:", msg, error);
+            var root = document.getElementById('root');
+            if (root) {{
+                root.innerHTML = '<div style="padding:24px; color:#b91c1c; font-family:sans-serif; background:#fef2f2; border-radius:16px; margin:20px; border:1px solid #fecaca;">' +
+                    '<h3 style="margin-top:0; font-size:18px; font-weight:700;">⚠️ ข้อผิดพลาดในการเรนเดอร์</h3>' +
+                    '<p style="font-size:14px; margin-bottom:8px;">' + msg + '</p>' +
+                    '<p style="font-size:12px; color:#64748b;">บรรทัดที่: ' + line + ' | คอลัมน์: ' + col + '</p>' +
+                    '</div>';
+            }}
+        }};
+    </script>
 
     <style>
         * {{
@@ -135,7 +169,7 @@ root.render(<App />);
             margin: 0;
             padding: 0;
             font-family: 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f0f4f9;
+            background-color: #0b0f17;
             color: #111c2d;
             overscroll-behavior: none;
         }}
@@ -160,18 +194,25 @@ root.render(<App />);
         }}
     </style>
 </head>
-<body class="bg-[#f0f4f9] text-[#111c2d] min-h-screen flex justify-center">
-    <div id="root" class="w-full max-w-md min-h-screen bg-white shadow-2xl relative flex flex-col"></div>
+<body class="bg-[#0b0f17] text-[#111c2d] min-h-screen flex justify-center items-start">
+    <div id="root" class="w-full max-w-md min-h-screen bg-[#f9f9ff] shadow-2xl relative flex flex-col">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-sm text-slate-500 font-medium">กำลังโหลดแบบ 4 (Stitch UI)...</span>
+            </div>
+        </div>
+    </div>
 
-    <script type="text/babel" data-presets="typescript,react">
-{all_ts}
+    <script type="text/babel" data-presets="env,react,typescript">
+{all_js}
     </script>
 </body>
 </html>"""
 
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(html_template)
-    print(f"Stitch standalone preview created at: {{OUTPUT_HTML}}")
+    print(f"Stitch preview updated successfully!")
 
 if __name__ == "__main__":
     compile_stitch_app()

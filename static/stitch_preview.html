@@ -2,8 +2,8 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบบันทึกการใช้รถยนต์ราชการ (แบบ 4) - สำนักงานพาณิชย์จังหวัดเพชรบุรี</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>บันทึกการใช้รถราชการ แบบ 4 - สนง.พาณิชย์จังหวัดเพชรบุรี</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,10 +59,24 @@
         }
     </script>
     
-    <!-- React, ReactDOM, Babel for in-browser JSX/TypeScript execution -->
+    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            console.error("Global JS Error:", msg, error);
+            var root = document.getElementById('root');
+            if (root) {
+                root.innerHTML = '<div style="padding:24px; color:#b91c1c; font-family:sans-serif; background:#fef2f2; border-radius:16px; margin:20px; border:1px solid #fecaca;">' +
+                    '<h3 style="margin-top:0; font-size:18px; font-weight:700;">⚠️ ข้อผิดพลาดในการเรนเดอร์</h3>' +
+                    '<p style="font-size:14px; margin-bottom:8px;">' + msg + '</p>' +
+                    '<p style="font-size:12px; color:#64748b;">บรรทัดที่: ' + line + ' | คอลัมน์: ' + col + '</p>' +
+                    '</div>';
+            }
+        };
+    </script>
 
     <style>
         * {
@@ -73,7 +87,7 @@
             margin: 0;
             padding: 0;
             font-family: 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f0f4f9;
+            background-color: #0b0f17;
             color: #111c2d;
             overscroll-behavior: none;
         }
@@ -98,86 +112,19 @@
         }
     </style>
 </head>
-<body class="bg-[#f0f4f9] text-[#111c2d] min-h-screen flex justify-center">
-    <div id="root" class="w-full max-w-md min-h-screen bg-white shadow-2xl relative flex flex-col"></div>
+<body class="bg-[#0b0f17] text-[#111c2d] min-h-screen flex justify-center items-start">
+    <div id="root" class="w-full max-w-md min-h-screen bg-[#f9f9ff] shadow-2xl relative flex flex-col">
+        <div class="flex items-center justify-center min-h-screen">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-sm text-slate-500 font-medium">กำลังโหลดแบบ 4 (Stitch UI)...</span>
+            </div>
+        </div>
+    </div>
 
-    <script type="text/babel" data-presets="typescript,react">
+    <script type="text/babel" data-presets="env,react,typescript">
 
 const { useState, useEffect, useMemo, useRef, useCallback } = React;
-
-type ScreenType = 'home-log' | 'trip-history' | 'maintenance-report' | 'officer-dashboard';
-
-interface Vehicle {
-  id: string;
-  plate: string;
-  driver: string;
-  initialKm: number;
-  currentKm: number;
-  nextOilKm: number;
-  status: 'normal' | 'warning' | 'active' | 'pending';
-  statusText: string;
-  taxDate: string;
-  inspectionDate: string;
-  isPrimary?: boolean;
-  missionStatus?: string;
-  distanceThisMonth: number;
-  percentUsage: number;
-  color: string;
-  ringColor: string;
-}
-
-interface Driver {
-  id: string;
-  name: string;
-  shortName: string;
-  initial: string;
-  role: string;
-  isSpecial: boolean;
-  avatarBg?: string;
-}
-
-interface TripRecord {
-  id: number;
-  date: string;
-  timeDepart: string;
-  timeReturn: string;
-  places: string;
-  approver: string;
-  odoDepart: number;
-  odoReturn: number;
-  distance: number;
-  fuelLiters: number;
-  driverName: string;
-  carPlate: string;
-  status: 'approved' | 'pending' | 'in_progress';
-  isSpecial?: boolean;
-  signedBy?: string;
-  signedDate?: string;
-}
-
-type MaintenanceCategory =
-  | 'ถ่ายน้ำมันเครื่อง'
-  | 'แจ้งซ่อมบำรุง / ศูนย์'
-  | 'ตรวจสภาพตามระยะ'
-  | 'เปลี่ยนยาง / สลับยาง';
-
-interface MaintenanceRecord {
-  id: string;
-  carPlate: string;
-  driverName: string;
-  title: string;
-  category: MaintenanceCategory;
-  status: 'completed' | 'approved' | 'in_progress';
-  cost: number;
-  date: string;
-  garage: string;
-  entryKm: number;
-  nextKm: number;
-  details: string;
-  warranty?: string;
-  hasReceipt?: boolean;
-  receiptNumber?: string;
-}
 
 
 
@@ -537,7 +484,7 @@ function getSavedState<T>(key: string, defaultValue: T): T {
   try {
     const item = localStorage.getItem(key);
     if (!item) return defaultValue;
-    return JSON.parse(item) as T;
+    return JSON.parse(item);
   } catch {
     return defaultValue;
   }
@@ -554,11 +501,8 @@ function saveState<T>(key: string, value: T): void {
 /* === Toast.tsx === */
 
 
-interface ToastProps {
-  message: string | null;
-}
 
-const Toast: React.FC<ToastProps> = ({ message }) => {
+const Toast = ({ message }) => {
   if (!message) return null;
 
   return (
@@ -582,14 +526,8 @@ const Toast: React.FC<ToastProps> = ({ message }) => {
 
 
 
-interface HeaderProps {
-  currentScreen: ScreenType;
-  onNavigate: (screen: ScreenType) => void;
-  onOpenPinModal: () => void;
-  unreadCount?: number;
-}
 
-const Header: React.FC<HeaderProps> = ({
+const Header = ({
   currentScreen,
   onNavigate,
   onOpenPinModal,
@@ -997,12 +935,8 @@ const Header: React.FC<HeaderProps> = ({
 
 
 
-interface BottomNavProps {
-  currentScreen: ScreenType;
-  onNavigate: (screen: ScreenType) => void;
-}
 
-const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate }) => {
+const BottomNav = ({ currentScreen, onNavigate }) => {
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 pb-safe bg-surface/95 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)] no-print">
       <div className="flex justify-around items-center h-16 px-2 max-w-lg mx-auto">
@@ -1186,20 +1120,14 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentScreen, onNavigate }) => {
 
 
 
-interface EditMileageModalProps {
-  isOpen: boolean;
-  vehicle: Vehicle;
-  onClose: () => void;
-  onSave: (newMileage: number) => void;
-}
 
-const EditMileageModal: React.FC<EditMileageModalProps> = ({
+const EditMileageModal = ({
   isOpen,
   vehicle,
   onClose,
   onSave,
 }) => {
-  const [val, setVal] = useState<number>(vehicle.currentKm);
+  const [val, setVal] = useState(vehicle.currentKm);
 
   if (!isOpen) return null;
 
@@ -1273,17 +1201,8 @@ const EditMileageModal: React.FC<EditMileageModalProps> = ({
 
 
 
-interface PdfExportModalProps {
-  isOpen: boolean;
-  vehicle?: Vehicle;
-  trips: TripRecord[];
-  allVehicles?: Vehicle[];
-  isAllCars?: boolean;
-  onClose: () => void;
-  onTriggerToast: (msg: string) => void;
-}
 
-const PdfExportModal: React.FC<PdfExportModalProps> = ({
+const PdfExportModal = ({
   isOpen,
   vehicle,
   trips,
@@ -1483,15 +1402,8 @@ const PdfExportModal: React.FC<PdfExportModalProps> = ({
 
 
 
-interface LineShareModalProps {
-  isOpen: boolean;
-  vehicle: Vehicle;
-  trips: TripRecord[];
-  onClose: () => void;
-  onTriggerToast: (msg: string) => void;
-}
 
-const LineShareModal: React.FC<LineShareModalProps> = ({
+const LineShareModal = ({
   isOpen,
   vehicle,
   trips,
@@ -1632,14 +1544,8 @@ ${latestTrip ? `🚩 ภารกิจล่าสุด: ${latestTrip.places}`
 /* === PinModal.tsx === */
 
 
-interface PinModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  onTriggerToast: (msg: string) => void;
-}
 
-const PinModal: React.FC<PinModalProps> = ({
+const PinModal = ({
   isOpen,
   onClose,
   onSuccess,
@@ -1763,13 +1669,8 @@ const PinModal: React.FC<PinModalProps> = ({
 
 
 
-interface ReceiptModalProps {
-  isOpen: boolean;
-  record: MaintenanceRecord | null;
-  onClose: () => void;
-}
 
-const ReceiptModal: React.FC<ReceiptModalProps> = ({
+const ReceiptModal = ({
   isOpen,
   record,
   onClose,
@@ -1865,14 +1766,8 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
 
 
-interface SignatureModalProps {
-  isOpen: boolean;
-  trip: TripRecord | null;
-  onClose: () => void;
-  onSignSuccess: (tripId: number, signerName: string) => void;
-}
 
-const SignatureModal: React.FC<SignatureModalProps> = ({
+const SignatureModal = ({
   isOpen,
   trip,
   onClose,
@@ -2027,14 +1922,8 @@ const SignatureModal: React.FC<SignatureModalProps> = ({
 
 
 
-interface TripDetailModalProps {
-  isOpen: boolean;
-  trip: TripRecord | null;
-  onClose: () => void;
-  onOpenPdf: () => void;
-}
 
-const TripDetailModal: React.FC<TripDetailModalProps> = ({
+const TripDetailModal = ({
   isOpen,
   trip,
   onClose,
@@ -2174,27 +2063,11 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({
 
 
 
-interface ActionModalProps {
-  isOpen: boolean;
-  type: 'depart' | 'return' | 'manual';
-  vehicle: Vehicle;
-  drivers: Driver[];
-  activeDriver: Driver;
-  onClose: () => void;
-  onSubmit: (data: {
-    type: 'depart' | 'return' | 'manual';
-    driver: string;
-    odometer: number;
-    destination?: string;
-    fuelLiters?: number;
-    time?: string;
-    date?: string;
-    approver?: string;
-  }) => void;
+) => void;
   onTriggerToast: (msg: string) => void;
 }
 
-const ActionModal: React.FC<ActionModalProps> = ({
+const ActionModal = ({
   isOpen,
   type,
   vehicle,
@@ -2204,13 +2077,13 @@ const ActionModal: React.FC<ActionModalProps> = ({
   onSubmit,
   onTriggerToast,
 }) => {
-  const [odometer, setOdometer] = useState<number>(vehicle.currentKm);
-  const [selectedDriver, setSelectedDriver] = useState<string>(activeDriver.name);
-  const [destination, setDestination] = useState<string>('');
-  const [approver, setApprover] = useState<string>('ผอ.กลุ่มยุทธศาสตร์และแผนงาน');
-  const [fuelLiters, setFuelLiters] = useState<string>('');
-  const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [scannedImage, setScannedImage] = useState<string | null>(null);
+  const [odometer, setOdometer] = useState(vehicle.currentKm);
+  const [selectedDriver, setSelectedDriver] = useState(activeDriver.name);
+  const [destination, setDestination] = useState('');
+  const [approver, setApprover] = useState('ผอ.กลุ่มยุทธศาสตร์และแผนงาน');
+  const [fuelLiters, setFuelLiters] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scannedImage, setScannedImage] = useState(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -2541,21 +2414,8 @@ const ActionModal: React.FC<ActionModalProps> = ({
 
 
 
-interface HomeLogScreenProps {
-  vehicle: Vehicle;
-  drivers: Driver[];
-  activeDriver: Driver;
-  trips: TripRecord[];
-  onSelectDriver: (driver: Driver) => void;
-  onOpenActionModal: (type: 'depart' | 'return' | 'manual') => void;
-  onOpenEditMileage: () => void;
-  onOpenPdfModal: () => void;
-  onOpenLineShare: () => void;
-  onTriggerToast: (msg: string) => void;
-  onViewTripDetail: (trip: TripRecord) => void;
-}
 
-const HomeLogScreen: React.FC<HomeLogScreenProps> = ({
+const HomeLogScreen = ({
   vehicle,
   drivers,
   activeDriver,
@@ -2568,7 +2428,7 @@ const HomeLogScreen: React.FC<HomeLogScreenProps> = ({
   onTriggerToast,
   onViewTripDetail,
 }) => {
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const latestTrip = trips[0];
 
   const toggleTag = (tag: string) => {
@@ -2986,18 +2846,8 @@ const HomeLogScreen: React.FC<HomeLogScreenProps> = ({
 
 
 
-interface TripHistoryScreenProps {
-  vehicles: Vehicle[];
-  trips: TripRecord[];
-  activeVehicle: Vehicle;
-  onSelectVehicle: (vehicle: Vehicle) => void;
-  onOpenPdfModal: (isAllCars?: boolean) => void;
-  onOpenLineShare: () => void;
-  onViewTripDetail: (trip: TripRecord) => void;
-  onTriggerToast: (msg: string) => void;
-}
 
-const TripHistoryScreen: React.FC<TripHistoryScreenProps> = ({
+const TripHistoryScreen = ({
   vehicles,
   trips,
   activeVehicle,
@@ -3007,10 +2857,10 @@ const TripHistoryScreen: React.FC<TripHistoryScreenProps> = ({
   onViewTripDetail,
   onTriggerToast,
 }) => {
-  const [selectedPlate, setSelectedPlate] = useState<string>(activeVehicle.plate);
+  const [selectedPlate, setSelectedPlate] = useState(activeVehicle.plate);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const filteredTrips = trips.filter((t) => {
     const matchPlate = selectedPlate === 'all' || t.carPlate === selectedPlate;
@@ -3521,17 +3371,8 @@ const TripHistoryScreen: React.FC<TripHistoryScreenProps> = ({
 
 
 
-interface MaintenanceScreenProps {
-  vehicles: Vehicle[];
-  activeVehicle: Vehicle;
-  maintenanceRecords: MaintenanceRecord[];
-  onSelectVehicle: (vehicle: Vehicle) => void;
-  onAddRecord: (record: MaintenanceRecord) => void;
-  onOpenReceiptModal: (record: MaintenanceRecord) => void;
-  onTriggerToast: (msg: string) => void;
-}
 
-const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
+const MaintenanceScreen = ({
   vehicles,
   activeVehicle,
   maintenanceRecords,
@@ -3541,17 +3382,17 @@ const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
   onTriggerToast,
 }) => {
   const [selectedCategory, setSelectedCategory] =
-    useState<MaintenanceCategory>('เปลี่ยนยาง / สลับยาง');
-  const [increment, setIncrement] = useState<number>(40000);
-  const [serviceDate, setServiceDate] = useState<string>('2025-05-15');
-  const [entryMileage, setEntryMileage] = useState<number>(activeVehicle.currentKm);
-  const [garageName, setGarageName] = useState<string>('ศูนย์บริการโตโยต้าเพชรบุรี');
-  const [repairCost, setRepairCost] = useState<string>('');
-  const [serviceDetail, setServiceDetail] = useState<string>(
+    useState('เปลี่ยนยาง / สลับยาง');
+  const [increment, setIncrement] = useState(40000);
+  const [serviceDate, setServiceDate] = useState('2025-05-15');
+  const [entryMileage, setEntryMileage] = useState(activeVehicle.currentKm);
+  const [garageName, setGarageName] = useState('ศูนย์บริการโตโยต้าเพชรบุรี');
+  const [repairCost, setRepairCost] = useState('');
+  const [serviceDetail, setServiceDetail] = useState(
     'เปลี่ยนน้ำมันเครื่องสังเคราะห์แท้ 10W-30 พร้อมกรองแท้ศูนย์...'
   );
-  const [hasPhoto, setHasPhoto] = useState<boolean>(false);
-  const [historyFilter, setHistoryFilter] = useState<string>('all');
+  const [hasPhoto, setHasPhoto] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState('all');
 
   const calculatedNextMileage =
     increment > 0 ? Number(entryMileage) + increment : Number(entryMileage);
@@ -3895,26 +3736,22 @@ const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
             <div className="grid grid-cols-2 gap-2">
               {[
                 {
-                  name: 'ถ่ายน้ำมันเครื่อง' as MaintenanceCategory,
-                  inc: 10000,
+                  name: 'ถ่ายน้ำมันเครื่อง': 10000,
                   icon: 'oil_barrel',
                   color: 'amber',
                 },
                 {
-                  name: 'แจ้งซ่อมบำรุง / ศูนย์' as MaintenanceCategory,
-                  inc: 0,
+                  name: 'แจ้งซ่อมบำรุง / ศูนย์': 0,
                   icon: 'handyman',
                   color: 'blue',
                 },
                 {
-                  name: 'ตรวจสภาพตามระยะ' as MaintenanceCategory,
-                  inc: 10000,
+                  name: 'ตรวจสภาพตามระยะ': 10000,
                   icon: 'manage_search',
                   color: 'teal',
                 },
                 {
-                  name: 'เปลี่ยนยาง / สลับยาง' as MaintenanceCategory,
-                  inc: 40000,
+                  name: 'เปลี่ยนยาง / สลับยาง': 40000,
                   icon: 'restart_alt',
                   color: 'slate',
                 },
@@ -4322,17 +4159,8 @@ const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
 
 
 
-interface OfficerDashboardScreenProps {
-  vehicles: Vehicle[];
-  trips: TripRecord[];
-  onOpenPdfModal: (isAllCars?: boolean) => void;
-  onOpenPinModal: () => void;
-  onOpenSignatureModal: (trip: TripRecord) => void;
-  onViewTripDetail: (trip: TripRecord) => void;
-  onTriggerToast: (msg: string) => void;
-}
 
-const OfficerDashboardScreen: React.FC<OfficerDashboardScreenProps> = ({
+const OfficerDashboardScreen = ({
   vehicles,
   trips,
   onOpenPdfModal,
@@ -4341,8 +4169,8 @@ const OfficerDashboardScreen: React.FC<OfficerDashboardScreenProps> = ({
   onViewTripDetail,
   onTriggerToast,
 }) => {
-  const [activeCarFilter, setActiveCarFilter] = useState<string>('all');
-  const [syncing, setSyncing] = useState<boolean>(false);
+  const [activeCarFilter, setActiveCarFilter] = useState('all');
+  const [syncing, setSyncing] = useState(false);
 
   const handleManualSync = () => {
     setSyncing(true);
@@ -5178,24 +5006,22 @@ import {
 
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenType>('home-log');
+  const [currentScreen, setCurrentScreen] = useState('home-log');
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>(() =>
+  const [vehicles, setVehicles] = useState(() =>
     getSavedState('fleet_vehicles', INITIAL_VEHICLES)
   );
 
-  const [activeVehicle, setActiveVehicle] = useState<Vehicle>(() => vehicles[0]);
+  const [activeVehicle, setActiveVehicle] = useState(() => vehicles[0]);
 
-  const [drivers] = useState<Driver[]>(INITIAL_DRIVERS);
-  const [activeDriver, setActiveDriver] = useState<Driver>(() => drivers[0]);
+  const [drivers] = useState(INITIAL_DRIVERS);
+  const [activeDriver, setActiveDriver] = useState(() => drivers[0]);
 
-  const [trips, setTrips] = useState<TripRecord[]>(() =>
+  const [trips, setTrips] = useState(() =>
     getSavedState('fleet_trips', INITIAL_TRIPS)
   );
 
-  const [maintenanceRecords, setMaintenanceRecords] = useState<
-    MaintenanceRecord[]
-  >(() => getSavedState('fleet_maintenance', INITIAL_MAINTENANCE));
+  const [maintenanceRecords, setMaintenanceRecords] = useState(() => getSavedState('fleet_maintenance', INITIAL_MAINTENANCE));
 
   // Modals state
   const [actionModal, setActionModal] = useState<{
@@ -5238,7 +5064,7 @@ function App() {
     trip: null,
   });
 
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState(null);
 
   // Sync to localStorage
   useEffect(() => {
@@ -5578,8 +5404,16 @@ function App() {
 }
 
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+try {
+    const rootEl = document.getElementById('root');
+    if (rootEl) {
+        const root = ReactDOM.createRoot(rootEl);
+        root.render(<App />);
+    }
+} catch (err) {
+    console.error("Mount error:", err);
+    document.getElementById('root').innerHTML = '<div style="padding:20px; color:#ef4444; font-family:sans-serif;"><h3>⚠️ เกิดข้อผิดพลาดในการโหลด</h3><p>' + err.message + '</p></div>';
+}
 
     </script>
 </body>
