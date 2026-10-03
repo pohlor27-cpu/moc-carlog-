@@ -968,15 +968,25 @@ async function deleteTrip(tripId) {
     }
 }
 
-// ----------------- Print / Form 4 Generator -----------------
-
 async function fetchForm4Data() {
+    let vehicleId = 1;
     const vehicleSelect = document.getElementById("filter-vehicle");
-    const vehicleId = vehicleSelect.value || (appState.vehicles[0] ? appState.vehicles[0].id : 1);
-    const month = document.getElementById("filter-month").value || appState.currentMonth;
+    if (vehicleSelect && vehicleSelect.value) {
+        vehicleId = vehicleSelect.value;
+    } else if (appState.activeDriver && appState.activeDriver.vehicle_id) {
+        vehicleId = appState.activeDriver.vehicle_id;
+    } else if (appState.vehicles && appState.vehicles.length > 0) {
+        vehicleId = appState.vehicles[0].id;
+    }
+
+    let month = appState.currentMonth || "2026-10";
+    const monthInput = document.getElementById("filter-month");
+    if (monthInput && monthInput.value) {
+        month = monthInput.value;
+    }
 
     const res = await fetch(`/api/report/form4?vehicle_id=${vehicleId}&month=${month}`);
-    if (!res.ok) throw new Error("ไม่พบข้อมูลรายงาน");
+    if (!res.ok) throw new Error("ไม่พบข้อมูลรายงานสำหรับรถคันนี้");
     return await res.json();
 }
 
@@ -1180,6 +1190,17 @@ async function generateForm4Print() {
 
 async function downloadForm4Image() {
     try {
+        // Ensure html2canvas is loaded
+        if (typeof html2canvas === "undefined") {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+                script.onload = resolve;
+                script.onerror = () => reject(new Error("ไม่สามารถโหลดไลบรารีสร้างรูปภาพได้"));
+                document.head.appendChild(script);
+            });
+        }
+
         const data = await fetchForm4Data();
         populateForm4DOM(data);
 
@@ -1188,176 +1209,67 @@ async function downloadForm4Image() {
             throw new Error("ไม่พบข้อมูลแบบ 4 สำหรับสร้างรูปภาพ");
         }
 
+        // Staging wrapper directly in body (visible during capture at exact print width)
+        const stage = document.createElement("div");
+        stage.id = "form4-image-staging";
+        stage.style.position = "fixed";
+        stage.style.left = "0";
+        stage.style.top = "0";
+        stage.style.width = "1400px";
+        stage.style.background = "#ffffff";
+        stage.style.zIndex = "-1";
+        stage.style.opacity = "0.01";
+        stage.style.pointerEvents = "none";
+        document.body.appendChild(stage);
+
         for (let i = 0; i < pages.length; i++) {
-            const pageElem = pages[i];
-            const pageNum = i + 1;
-            const totalPages = pages.length;
+            const pageElem = pages[i].cloneNode(true);
+            stage.innerHTML = "";
+            stage.appendChild(pageElem);
 
-            const iframe = document.createElement("iframe");
-            iframe.style.position = "fixed";
-            iframe.style.left = "-9999px";
-            iframe.style.top = "-9999px";
-            iframe.style.width = "1400px";
-            iframe.style.height = "990px";
-            iframe.style.border = "none";
-            iframe.style.opacity = "0";
-            iframe.style.pointerEvents = "none";
-            iframe.style.zIndex = "-9999";
-            document.body.appendChild(iframe);
-
-            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-            iframeDoc.open();
-            iframeDoc.write(`
-                <!DOCTYPE html>
-                <html lang="th">
-                <head>
-                    <meta charset="UTF-8">
-                    <link rel="preconnect" href="https://fonts.googleapis.com">
-                    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-                    <style>
-                        * {
-                            box-sizing: border-box;
-                            font-family: 'Sarabun', 'TH Sarabun New', sans-serif !important;
-                            margin: 0;
-                            padding: 0;
-                        }
-                        body {
-                            background: #ffffff;
-                            width: 1400px;
-                            min-height: 990px;
-                            overflow: visible;
-                            display: flex;
-                            justify-content: center;
-                            align-items: flex-start;
-                            padding: 16px 20px;
-                        }
-                        .form4-page {
-                            width: 1350px;
-                            min-width: 1350px;
-                            max-width: 1350px;
-                            background: #ffffff;
-                            padding: 14px 22px;
-                            border: 1px solid #333333;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: space-between;
-                            box-sizing: border-box;
-                            height: 940px;
-                            min-height: 940px;
-                            max-height: 940px;
-                        }
-                        .form4-top-bar {
-                            display: grid;
-                            grid-template-columns: 1fr auto 1fr;
-                            align-items: center;
-                            margin-bottom: 2px;
-                        }
-                        .form4-top-dummy {
-                            visibility: hidden;
-                        }
-                        .form4-logo-container {
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                        }
-                        .form4-logo-img {
-                            width: 52px;
-                            height: 52px;
-                            object-fit: contain;
-                            display: block;
-                        }
-                        .form4-header-top {
-                            display: flex;
-                            justify-content: flex-end;
-                            font-size: 13.5pt;
-                            font-weight: 700;
-                        }
-                        .form4-title-row {
-                            text-align: center;
-                            font-size: 18pt;
-                            font-weight: 700;
-                            margin-bottom: 6px;
-                            letter-spacing: 0.5px;
-                        }
-                        .form4-meta-row {
-                            display: flex;
-                            justify-content: space-between;
-                            font-size: 13pt;
-                            margin-bottom: 6px;
-                        }
-                        .form4-table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            font-size: 11pt;
-                            text-align: center;
-                        }
-                        .form4-table th, .form4-table td {
-                            border: 1px solid #000000;
-                            padding: 2.5px 2px;
-                            line-height: 1.15;
-                        }
-                        .form4-table th {
-                            font-weight: 700;
-                            background: #f8f8f8;
-                        }
-                        .form4-footer {
-                            margin-top: 8px;
-                            display: grid;
-                            grid-template-columns: 1.2fr 1fr 1.2fr;
-                            font-size: 11.5pt;
-                            align-items: end;
-                        }
-                        .form4-footer-col {
-                            display: flex;
-                            flex-direction: column;
-                            gap: 3px;
-                        }
-                        .signature-line {
-                            text-align: center;
-                            line-height: 1.35;
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${pageElem.outerHTML}
-                </body>
-                </html>
-            `);
-            iframeDoc.close();
-
-            await new Promise(r => setTimeout(r, 400));
-            if (iframeDoc.fonts) {
-                await iframeDoc.fonts.ready;
+            // Wait for fonts & layout
+            await new Promise(r => setTimeout(r, 200));
+            if (document.fonts) {
+                await document.fonts.ready;
             }
 
-            const targetElem = iframeDoc.querySelector(".form4-page");
-            const canvas = await html2canvas(targetElem, {
+            const canvas = await html2canvas(pageElem, {
                 scale: 2,
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: "#ffffff",
                 width: 1350,
-                windowWidth: 1400
+                logging: false
             });
 
-            if (document.body.contains(iframe)) {
-                document.body.removeChild(iframe);
-            }
-
-            const link = document.createElement("a");
+            const pageNum = i + 1;
+            const totalPages = pages.length;
             const pageSuffix = totalPages > 1 ? `_หน้า${pageNum}จาก${totalPages}` : '';
-            link.download = `แบบ4_บันทึกการใช้รถ_${data.license_plate.replace(/\s+/g, '_')}_${data.month_label.replace(/\s+/g, '_')}${pageSuffix}.png`;
-            link.href = canvas.toDataURL("image/png");
+            const fileName = `แบบ4_บันทึกการใช้รถ_${(data.license_plate || 'ขก225').replace(/\s+/g, '_')}_${(data.month_label || 'ต.ค.2569').replace(/\s+/g, '_')}${pageSuffix}.png`;
+            const dataUrl = canvas.toDataURL("image/png");
+
+            // Auto download link
+            const link = document.createElement("a");
+            link.download = fileName;
+            link.href = dataUrl;
+            document.body.appendChild(link);
             link.click();
-            
+            document.body.removeChild(link);
+
             if (totalPages > 1 && i < totalPages - 1) {
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 400));
             }
+        }
+
+        if (document.body.contains(stage)) {
+            document.body.removeChild(stage);
         }
 
         alert("✅ เซฟรูปภาพขนาด A4 แนวนอน (ความละเอียดสูง) เรียบร้อยแล้วครับ!");
     } catch (e) {
+        const stage = document.getElementById("form4-image-staging");
+        if (stage && document.body.contains(stage)) document.body.removeChild(stage);
+        console.error("Save image error:", e);
         alert("ไม่สามารถเซฟเป็นรูปภาพได้: " + e.message);
     }
 }

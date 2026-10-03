@@ -40,11 +40,17 @@
         }
     }, true);
 
-    // 2. Prevent Right-Click Context Menu
+    // 2. Prevent Right-Click Context Menu (Except on Images & Inputs)
     document.addEventListener('contextmenu', function (e) {
-        // Allow text selection in standard inputs, block elsewhere
         const target = e.target;
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+        if (target && (
+            target.tagName === 'INPUT' || 
+            target.tagName === 'TEXTAREA' || 
+            target.tagName === 'IMG' || 
+            target.tagName === 'CANVAS' ||
+            target.closest('.receipt-preview') ||
+            target.closest('#print-area')
+        )) {
             return true;
         }
         e.preventDefault();
