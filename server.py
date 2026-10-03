@@ -18,6 +18,13 @@ database.init_db()
 
 app = FastAPI(title="MOC Car Log System (แบบ 4)", version="1.0.0")
 
+# Import & Mount Stitch Bridge Router
+try:
+    from stitch_bridge import router as stitch_router
+    app.include_router(stitch_router)
+except Exception as e:
+    print("[Stitch Bridge] Error importing router:", e)
+
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
@@ -27,13 +34,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware to prevent stale caching on mobile browsers
+# Middleware for security & cache-control
 @app.middleware("http")
-async def add_no_cache_header(request, call_next):
+async def add_security_and_no_cache_headers(request, call_next):
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
