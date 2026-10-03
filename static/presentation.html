@@ -110,25 +110,54 @@
     .ag-pill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, #fff9 50%, transparent 65%); transform: translateX(-100%); }
     kbd { font-family: inherit; font-weight: 700; color: #10213d; background: linear-gradient(135deg, #fff1b8, #d4a84b); border-radius: .35em; padding: .05em .45em; box-shadow: 0 .15em 0 #9a6f1f; }
 
-    /* diamond video container on closing slide */
-    .diamond-video-wrap {
-      width: 25em;
-      height: 14em;
-      border-radius: 1.4em;
-      overflow: hidden;
+    /* 9:16 diamond video container & showcase layout on closing slide */
+    .ag-closing-showcase {
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #000;
-      border: 1px solid #d4a84b99;
-      box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), 0 .8em 2.5em #0009;
-      position: relative;
+      gap: 5em;
+      padding: 3em 5.5em;
     }
-    .diamond-video {
+    .diamond-frame-916 {
+      position: relative;
+      height: 47em;
+      width: 26.4375em; /* 47 * 9 / 16 (Exact 9:16 vertical proportion) */
+      aspect-ratio: 9 / 16;
+      border-radius: 1.8em;
+      overflow: hidden;
+      background: #000;
+      border: 2px solid #d4a84bcc;
+      box-shadow: 0 0 50px rgba(255, 215, 0, 0.45), 0 1.2em 3.5em rgba(0, 0, 0, 0.85);
+      flex-shrink: 0;
+    }
+    .diamond-video-916 {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
+    }
+    .closing-info-side {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 1.1em;
+      max-width: 52em;
+    }
+    .closing-info-side .ag-title {
+      text-align: left;
+    }
+    .closing-info-side .ag-title span {
+      font-size: 3.2em;
+    }
+    .closing-info-side .ag-title b {
+      font-size: 2.9em;
+    }
+    .closing-info-side .ag-sub {
+      font-size: 1.85em;
+      color: #c9d6e8;
+      font-weight: 300;
     }
 
     /* steps (3 columns) */
@@ -502,21 +531,28 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- SLIDE 10: CLOSING & THANK YOU              -->
+    <!-- SLIDE 10: CLOSING & 9:16 DIAMOND SHOWCASE  -->
     <!-- ========================================== -->
-    <section class="page" data-title="บทสรุป — ขอบพระคุณครับ">
-      <div class="ag"><div class="ag-center" style="gap: 1.0em;">
-        <div class="diamond-video-wrap pop" style="--d:.2s">
-          <video id="closing-diamond-video" src="/videos/diamond_logo.mp4" autoplay loop muted playsinline preload="auto" class="diamond-video"></video>
+    <section class="page" data-title="บทสรุป — วิดีโอไดมอนด์">
+      <div class="ag ag-closing-showcase">
+        <!-- 9:16 Full Height Diamond Video Frame -->
+        <div class="diamond-frame-916 pop" style="--d:.2s">
+          <video id="closing-diamond-video" src="/videos/diamond_logo.mp4" autoplay loop muted playsinline preload="auto" class="diamond-video-916"></video>
         </div>
-        <span class="ag-kicker pop" style="--d:.6s">สำนักงานพาณิชย์จังหวัดเพชรบุรี · กลุ่มยุทธศาสตร์และแผนงาน</span>
-        <h2 class="ag-title">
-          <span style="--d:.9s">มุ่งมั่นขับเคลื่อนงานราชการ</span>
-          <b style="--d:1.3s">ด้วยนวัตกรรมดิจิทัลเพื่อประชาชน</b>
-        </h2>
-        <p class="ag-sub up" style="--d:1.7s">ขอบพระคุณครับ</p>
-        <span class="ag-pill pop" style="--d:2.1s">ระบบพร้อมให้บริการและต่อยอดเต็มรูปแบบ</span>
-      </div></div>
+        <!-- Narrative Side -->
+        <div class="closing-info-side">
+          <div class="ag-logo-gold pop" style="--d:.4s; font-size: 3.2em;">MOC</div>
+          <span class="ag-kicker pop" style="--d:.7s">สำนักงานพาณิชย์จังหวัดเพชรบุรี · กลุ่มยุทธศาสตร์และแผนงาน</span>
+          <h2 class="ag-title">
+            <span style="--d:.9s">มุ่งมั่นขับเคลื่อนงานราชการ</span>
+            <b style="--d:1.3s">ด้วยนวัตกรรมดิจิทัลเพื่อประชาชน</b>
+          </h2>
+          <p class="ag-sub up" style="--d:1.7s">ระบบบันทึกการใช้รถราชการ (แบบ 4) สู่ดิจิทัลเต็มรูปแบบ</p>
+          <div class="ag-pillrow" style="position: relative; top: auto; text-align: left; margin-top: 1.2em;">
+            <span class="ag-pill pop" style="--d:2.1s">ขอบพระคุณครับ · พร้อมเปิดรับคำแนะนำ</span>
+          </div>
+        </div>
+      </div>
     </section>
 
   </main>
