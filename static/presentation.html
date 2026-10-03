@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>MOC Phetchaburi — ระบบบันทึกการใช้รถราชการ (แบบ 4)</title>
+  <meta name="description" content="งานนำเสนอระบบบันทึกการใช้รถราชการ (แบบ 4) สำนักงานพาณิชย์จังหวัดเพชรบุรี">
+  <meta name="theme-color" content="#071426">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Prompt:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@400;600;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ---------- shell: full-screen stage + controls + page picker ---------- */
+    * { box-sizing: border-box; }
+    html, body { 
+      margin: 0; width: 100%; height: 100%; overflow: hidden; 
+      background: #071426; color: #fff; 
+      font-family: "Prompt", "Noto Sans Thai", "Leelawadee UI", -apple-system, sans-serif; 
+      -webkit-font-smoothing: antialiased;
+    }
+    button { font: inherit; cursor: pointer; color: inherit; border: 1px solid #ffffff30; background: #14263e; border-radius: 12px; min-height: 44px; padding: 10px 16px; }
+    button:hover { background: #294465; }
+    button:focus-visible { outline: 3px solid #edc66d; outline-offset: 3px; }
+    button:disabled { opacity: .3; cursor: default; }
+
+    #stage { position: fixed; inset: 0; touch-action: pan-y; }
+    .idle #stage { cursor: none; }
+    .page {
+      position: absolute; inset: 0; display: grid; place-items: center;
+      opacity: 0; visibility: hidden; scale: 1.04; filter: blur(6px);
+      transition: opacity .6s, scale .9s cubic-bezier(.2, .7, .2, 1), filter .6s, visibility 0s .6s;
+    }
+    .page.on { opacity: 1; visibility: visible; scale: 1; filter: none; transition: opacity .6s, scale .9s cubic-bezier(.2, .7, .2, 1), filter .6s; }
+
+    .controls {
+      position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 10; opacity: .55;
+      display: flex; align-items: center; gap: 4px; padding: 4px; white-space: nowrap; border-radius: 12px;
+      background: #071426b3; -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+      border: 1px solid #edc66d45; box-shadow: 0 8px 40px #0006, 0 0 28px #edc66d1f; transition: opacity .25s;
+    }
+    .idle .controls:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }
+    .controls:hover, .controls:focus-within { opacity: 1; }
+    .controls button { min-height: 30px; padding: 3px 9px; font-size: 13px; border-radius: 8px; }
+    #choose { min-width: 62px; font-weight: 600; }
+
+    dialog { color: #fff; background: #0e2037; border: 1px solid #ffffff30; border-radius: 20px; width: min(1100px, 94vw); max-height: 90dvh; padding: 22px; }
+    dialog::backdrop { background: #000b; }
+    dialog header { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-bottom: 20px; }
+    dialog h2 { font-size: 22px; margin: 0; font-family: 'Prompt', sans-serif; font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+    .thumb { padding: 6px; text-align: left; background: #152b46; overflow: hidden; border-radius: 12px; }
+    .thumb[aria-current=true] { border: 2px solid #e7bb5f; background: #344055; }
+    .thumb > span { display: block; font-size: 13px; line-height: 1.5; padding: 10px 5px; white-space: normal; }
+    .thumb-view { container-type: inline-size; border-radius: 8px; overflow: hidden; pointer-events: none; }
+    .thumb-view .ag { width: 100%; font-size: 1cqw; }
+    .thumb * { animation: none !important; }
+    .hint { font-size: 12px; color: #afbdcd; margin: 18px 0 0; line-height: 1.7; }
+
+    @media (max-width: 600px) {
+      button { padding: 9px 12px; }
+      dialog { padding: 15px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    }
+
+    /* ---------- slide stage: always 16:9, 1em = 1% of its width ---------- */
+    .ag { position: relative; z-index: 0; width: min(100vw, 177.78dvh); aspect-ratio: 16 / 9; font-size: min(1vw, 1.7778dvh); color: #f4ead6; overflow: hidden; line-height: 1.35; }
+    .ag::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 58%, #1a3a68 0, #0d2242 42%, #081830 75%, #071426 100%); }
+    .ag::after { content: ''; position: absolute; z-index: -1; left: -25%; right: -25%; top: 36%; height: 150%; border-radius: 50%; border-top: .14em solid #d4a84b44; }
+    .ag > * { position: absolute; margin: 0; }
+    .ag-center { inset: 0 0 4em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.3em; text-align: center; }
+    .ag-center > * { position: relative; margin: 0; }
+
+    .ag-head { top: 2.2em; left: 0; right: 0; text-align: center; }
+    .ag-kicker { display: inline-block; font-size: 1.5em; padding: .25em 1.2em; border: 1px solid #d4a84b99; border-radius: 2em; color: #f0c75e; letter-spacing: .03em; font-weight: 500; }
+    .ag-title { margin: .35em 0 0; font-size: 1.5em; font-weight: 700; line-height: 1.35; }
+    .ag-title span { display: block; font-size: 3.4em; color: #fbf3e2; text-shadow: 0 .05em .3em #0009; }
+    .ag-title b { display: block; font-size: 3.0em; background: linear-gradient(100deg, #b98a2f 0, #f3d27a 40%, #fff4c9 50%, #f3d27a 60%, #b98a2f 100%) 0 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .ag-center .ag-title span { font-size: 4.2em; }
+    .ag-center .ag-title b { font-size: 3.8em; }
+    .ag-sub { font-size: 2.0em; color: #c9d6e8; font-weight: 300; }
+
+    .ag-logo-gold { font-family: 'Cinzel', serif; font-weight: 900; font-size: 4.5em; letter-spacing: 0.15em; background: linear-gradient(180deg, #FFF6D6 0%, #FFD700 40%, #D97706 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 4px 20px rgba(255, 215, 0, 0.45)); }
+
+    .ag h3 { display: flex; align-items: center; gap: .45em; margin: 0 0 .45em; font-size: 2.2em; color: #fbf3e2; white-space: nowrap; }
+    .ag h3 i { display: grid; place-items: center; width: 1.6em; height: 1.6em; border-radius: 50%; font-style: normal; font-size: .9em; font-weight: 800; color: #0f2a52; background: radial-gradient(circle at 35% 30%, #fff1b8, #d4a84b 55%, #9a6f1f); }
+
+    .ag-card { display: flex; align-items: center; gap: 1.1em; height: 7.9em; padding: 0 1.2em; border-radius: 1.2em; background: linear-gradient(135deg, #15305a, #0c1f3b); border: 1px solid #d4a84b55; box-shadow: 0 .6em 2em #0006; }
+    .ag-card + .ag-card { margin-top: 1em; }
+    .ag-card p { margin: 0; font-size: 1.3em; color: #e8eef7; }
+    .ag-card b { display: block; font-size: 1.05em; color: #f0c75e; }
+    .ic { flex: none; display: grid; place-items: center; width: 2.4em; height: 2.4em; border-radius: 50%; font-size: 1.9em; color: #f3d27a; background: #f3d27a14; box-shadow: 0 0 0 .1em #d4a84b; }
+
+    .ag-core { width: 14em; height: 14em; border-radius: 50%; background: radial-gradient(circle, #f3d27a55 0, #e9c46a22 45%, transparent 70%); }
+    .ag-center .ag-core { width: 11em; height: 11em; }
+    .ag-ring { position: absolute; inset: .2em; border-radius: 50%; border: .14em dashed #e9c46acc; animation: agSpin 14s linear infinite; }
+    .ag-ring + .ag-ring { inset: -1.3em; border-style: dotted; border-color: #e9c46a77; animation-duration: 24s; animation-direction: reverse; }
+    .ag-bot { position: absolute; inset: 1.6em; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1b8, #d4a84b 55%, #9a6f1f); box-shadow: 0 0 0 .25em #d4a84b, 0 0 3em #e9c46a88; }
+    .ag-bot i { font-style: normal; font-size: 3.8em; color: #10213d; }
+
+    .ag-line { height: .16em; transform-origin: 0 50%; background: repeating-linear-gradient(90deg, #e9c46a99 0 .7em, transparent .7em 1.2em); }
+    .ag-label { text-align: center; }
+    .ag-label b { display: block; font-size: 1.6em; color: #f3d27a; }
+    .ag-label small { font-size: 1.15em; color: #c9d6e8; }
+    .ag-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .6em; }
+    .ag-chips span { font-size: 1.2em; padding: .3em .9em; border-radius: 2em; background: #f3d27a1a; border: 1px solid #e9c46a88; color: #fbeecb; white-space: nowrap; }
+
+    .ag-pillrow { top: 49.3em; left: 0; right: 0; text-align: center; }
+    .ag-pill { position: relative; display: inline-block; overflow: hidden; font-size: 1.8em; font-weight: 600; padding: .35em 1.6em; border-radius: 2em; color: #10213d; background: linear-gradient(135deg, #f3d27a, #d4a84b); box-shadow: 0 .4em 1.6em #d4a84b55; }
+    .ag-pill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, #fff9 50%, transparent 65%); transform: translateX(-100%); }
+    kbd { font-family: inherit; font-weight: 700; color: #10213d; background: linear-gradient(135deg, #fff1b8, #d4a84b); border-radius: .35em; padding: .05em .45em; box-shadow: 0 .15em 0 #9a6f1f; }
+
+    /* steps (3 columns) */
+    .steps { left: 5em; right: 5em; top: 20.5em; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4em; }
+    .step { height: 26em; display: flex; flex-direction: column; gap: .8em; padding: 2em 1.8em; border-radius: 1.4em; background: linear-gradient(160deg, #15305a, #0c1f3b); border: 1px solid #d4a84b55; box-shadow: 0 .6em 2em #0006; }
+    .step > p { margin: 0; font-size: 1.85em; color: #c9d6e8; line-height: 1.45; }
+    .steps-l1 { left: 32.5em; top: 33em; width: 3.5em; }
+    .steps-l2 { left: 64.5em; top: 33em; width: 3.5em; }
+
+    /* keys (4 tiles) */
+    .keys { left: 6em; right: 6em; top: 20.5em; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6em; }
+    .key { height: 25.5em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1em; padding: 1.4em; border-radius: 1.4em; background: linear-gradient(160deg, #15305a, #0c1f3b); border: 1px solid #d4a84b55; box-shadow: 0 .6em 2em #0006; text-align: center; }
+    .key kbd { font-size: 3.2em; min-width: 2.2em; text-align: center; }
+    .key span { font-size: 1.8em; color: #e8eef7; font-weight: 600; line-height: 1.35; }
+    .key small { font-size: 1.4em; color: #c9d6e8; line-height: 1.4; }
+
+    /* rows (table / architecture) */
+    .rows { left: 5em; right: 5em; top: 20.5em; display: grid; gap: .7em; }
+    .row { display: grid; grid-template-columns: 19em 1fr; align-items: center; gap: 1.5em; padding: .8em 1.8em; border-radius: 1.1em; background: linear-gradient(135deg, #15305a, #0c1f3b); border: 1px solid #d4a84b55; box-shadow: 0 .4em 1.4em #0005; }
+    .row b { font-size: 1.8em; color: #f3d27a; }
+    .row span { font-size: 1.55em; color: #e8eef7; line-height: 1.4; }
+
+    /* flow diagram */
+    .flow .ag-line { rotate: var(--a, 0deg); height: .22em; }
+    .flow .ag-line i { position: absolute; top: 50%; width: .9em; height: .9em; margin: -.45em 0 0 -.45em; border-radius: 50%; background: #fff4c9; box-shadow: 0 0 .6em .25em #f3d27a; opacity: 0; }
+    .on .flow .ag-line i { animation: pkRun 1.6s calc(var(--d, 0s) + .8s) linear infinite; }
+    @keyframes pkRun { 0% { left: 0; opacity: 0; } 15%, 85% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+    .node { width: 17em; height: 10.5em; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4em; text-align: center; border-radius: 1.3em; background: linear-gradient(135deg, #15305a, #0c1f3b); border: 1px solid #d4a84b99; box-shadow: 0 .6em 2em #0006, 0 0 2em #d4a84b22; }
+    .node b { font-size: 1.9em; color: #f3d27a; }
+    .node small { font-size: 1.35em; color: #c9d6e8; }
+    .loop { left: 11em; top: 38em; width: 78em; height: 9.5em; border: .22em dashed #e9c46a99; border-top: 0; border-radius: 0 0 2em 2em; }
+    .loop span { position: absolute; left: 50%; bottom: -1.2em; translate: -50% 0; white-space: nowrap; font-size: 1.5em; padding: .25em 1.1em; border-radius: 2em; background: #0d2242; border: 1px solid #e9c46a88; color: #fbeecb; }
+    .loop i { position: absolute; bottom: -.55em; width: .9em; height: .9em; border-radius: 50%; background: #fff4c9; box-shadow: 0 0 .6em .25em #f3d27a; opacity: 0; }
+    .on .loop i { animation: pkBack 3.5s 4.8s linear infinite; }
+    @keyframes pkBack { 0% { left: 100%; opacity: 0; } 10%, 90% { opacity: 1; } 100% { left: 0; opacity: 0; } }
+
+    /* ---------- animations & build-up ---------- */
+    @keyframes agFade { from { opacity: 0; } }
+    @keyframes agUp { from { opacity: 0; transform: translateY(1.2em); } }
+    @keyframes agLeft { from { opacity: 0; transform: translateX(-2em); } }
+    @keyframes agRight { from { opacity: 0; transform: translateX(2em); } }
+    @keyframes agReveal { from { opacity: .2; clip-path: inset(-.4em 100% -.4em -.2em); } to { clip-path: inset(-.4em -.2em); } }
+    @keyframes agPop { from { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.06); } }
+    @keyframes agIgnite { from { opacity: 0; transform: scale(.3); filter: brightness(3); } 60% { opacity: 1; filter: brightness(1.6); } }
+    @keyframes agSpin { to { transform: rotate(1turn); } }
+    @keyframes agShine { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+    @keyframes agSweep { 0%, 70% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    @keyframes agGrow { from { transform: scaleX(0); } }
+    @keyframes agDash { to { background-position: -2.4em 0; } }
+    @keyframes agGlow { 50% { border-color: #f3d27a; box-shadow: 0 0 0 .3em #f3d27a55, 0 0 3em #f3d27a88; } }
+
+    .on .fade { animation: agFade .6s var(--d, 0s) both; }
+    .on .up { animation: agUp .7s var(--d, 0s) both; }
+    .on .left { animation: agLeft .7s var(--d, 0s) both; }
+    .on .right { animation: agRight .7s var(--d, 0s) both; }
+    .on .pop { animation: agPop .6s var(--d, 0s) both; }
+    .on .ignite { animation: agIgnite 1.1s var(--d, 0s) both; }
+    .on .ag-title span { animation: agReveal .9s var(--d, 0s) cubic-bezier(.2, .7, .2, 1) both; }
+    .on .ag-title b { animation: agReveal .9s var(--d, 0s) cubic-bezier(.2, .7, .2, 1) both, agShine 5s calc(var(--d, 0s) + 1.2s) linear infinite; }
+    .on .ag-line { animation: agGrow .8s var(--d, 0s) both, agDash 1.2s linear infinite; }
+    .on .ag-pill::after { animation: agSweep 3.5s calc(var(--d, 0s) + .8s) infinite; }
+    .on .key.hot { animation: agPop .6s var(--d, 0s) both, agGlow 1.4s calc(var(--d, 0s) + 1.2s) 2; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .page, .controls { transition: none; }
+      .ag *, .ag *::before, .ag *::after { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <main id="stage" aria-label="สไลด์นำเสนอ คลิกเพื่อไปหน้าถัดไป">
+
+    <!-- ========================================== -->
+    <!-- SLIDE 1: COVER (หน้าปก)                    -->
+    <!-- ========================================== -->
+    <section class="page" data-title="หน้าปก — MOC Vehicle Logbook">
+      <div class="ag"><div class="ag-center">
+        <div class="ag-logo-gold pop" style="--d:.3s">MOC</div>
+        <span class="ag-kicker pop" style="--d:.8s">สำนักงานพาณิชย์จังหวัดเพชรบุรี · กลุ่มยุทธศาสตร์และแผนงาน</span>
+        <h1 class="ag-title">
+          <span style="--d:1.1s">ระบบบันทึกการใช้รถราชการ (แบบ 4)</span>
+          <b style="--d:1.5s">สู่ระบบดิจิทัลอัจฉริยะ เต็มรูปแบบ</b>
+        </h1>
+        <p class="ag-sub up" style="--d:2.0s">ความโปร่งใส · ความแม่นยำ · สถาปัตยกรรมระดับพรีเมียม</p>
+        <span class="ag-pill pop" style="--d:2.4s">กด → หรือ คลิกเพื่อเริ่มต้น</span>
+      </div></div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 2: THE PROBLEM & SHIFT               -->
+    <!-- ========================================== -->
+    <section class="page" data-title="จากสมุดกระดาษ สู่ดิจิทัล">
+      <div class="ag">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">การเปลี่ยนแปลงที่สำคัญ</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">จากสมุดบันทึกกระดาษแบบเดิม</span>
+            <b style="--d:.9s">สู่ศูนย์ควบคุมยานพาหนะแบบเรียลไทม์</b>
+          </h2>
+        </div>
+        <div class="steps">
+          <div class="step up" style="--d:1.3s">
+            <h3><i>1</i>อดีต</h3>
+            <p>จดบันทึกลงกระดาษ เสี่ยงต่อการสูญหาย ไมล์ผิดพลาด และต้องคำนวณซ้ำทุกสิ้นเดือน</p>
+          </div>
+          <div class="step up" style="--d:2.0s">
+            <h3><i>2</i>ปัจจุบัน</h3>
+            <p>ผขร. ถ่ายรูปไมล์ AI สแกนอัตโนมัติ ข้อมูลซิงค์ตรงเข้าฐานข้อมูลกลางทันที</p>
+          </div>
+          <div class="step up" style="--d:2.7s">
+            <h3><i>3</i>อนาคต</h3>
+            <p>สั่งพิมพ์รายงานแบบ 4 ครบ 4 คันในคลิกเดียว พร้อมระบบแจ้งเตือนเปลี่ยนน้ำมันเครื่องแม่นยำ</p>
+          </div>
+        </div>
+        <span class="ag-line steps-l1" style="--d:1.8s"></span>
+        <span class="ag-line steps-l2" style="--d:2.5s"></span>
+        <div class="ag-pillrow"><span class="ag-pill pop" style="--d:3.3s">ลดภาระงานเอกสารกว่า 90% และตรวจสอบย้อนหลังได้ 100%</span></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 3: 4 CORE PILLARS                    -->
+    <!-- ========================================== -->
+    <section class="page" data-title="4 เสาหลักของระบบ">
+      <div class="ag">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">จุดเด่นเทคโนโลยี</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">4 เสาหลักสถาปัตยกรรม</span>
+            <b style="--d:.9s">ที่ขับเคลื่อนความสำเร็จของระบบ</b>
+          </h2>
+        </div>
+        <div class="keys">
+          <div class="key pop" style="--d:1.3s">
+            <kbd>📷</kbd>
+            <span>AI Vision OCR</span>
+            <small>สแกนหน้าปัดไมล์รถ ดึงตัวเลขอัตโนมัติในเสี้ยววินาที</small>
+          </div>
+          <div class="key pop" style="--d:1.6s">
+            <kbd>⭕</kbd>
+            <span>4 Activity Rings</span>
+            <small>วงแหวนติดตามระยะและสุขภาพรถยนต์ 4 คัน</small>
+          </div>
+          <div class="key pop" style="--d:1.9s">
+            <kbd>🖨️</kbd>
+            <span>Batch Form 4</span>
+            <small>พิมพ์แบบ 4 ครบ 4 คัน รวดเดียวใน 1 คลิก พร้อมลงนาม</small>
+          </div>
+          <div class="key pop hot" style="--d:2.2s">
+            <kbd>👑</kbd>
+            <span>Master Vault 2424</span>
+            <small>ความปลอดภัย 2 ชั้น รีเซ็ต PIN และสำรอง Google Drive</small>
+          </div>
+        </div>
+        <div class="ag-pillrow"><span class="ag-pill pop" style="--d:2.8s">ออกแบบตามแนวคิด Apple Design System เรียบหรู ใช้งานง่าย</span></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 4: DRIVER VIEW & AI OCR              -->
+    <!-- ========================================== -->
+    <section class="page" data-title="มุมมอง ผขร. — AI Vision OCR">
+      <div class="ag">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">มุมมองพนักงานขับรถ</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">บันทึกรวดเร็วผ่านมือถือ</span>
+            <b style="--d:.9s">ไม่ต้องจำรหัสผ่าน พร้อม AI OCR</b>
+          </h2>
+        </div>
+        <div class="rows">
+          <div class="row left" style="--d:1.2s">
+            <b>1. เลือกรถ</b>
+            <span>เลือกทะเบียนรถ 4 คัน (ขก 225, กอ 409, ขก 192, นจ 4648) ตามที่ขับขี่จริง</span>
+          </div>
+          <div class="row left" style="--d:1.4s">
+            <b>2. สแกนไมล์ AI</b>
+            <span>ถ่ายภาพหน้าปัดรถยนต์ AI ดึงเลขไมล์ใส่ช่องเริ่มต้นให้อัตโนมัติ</span>
+          </div>
+          <div class="row left" style="--d:1.6s">
+            <b>3. บันทึกไปราชการ</b>
+            <span>กรอกสถานที่ วัตถุประสงค์ และชื่อผู้ขอใช้รถในไม่กี่วินาที</span>
+          </div>
+          <div class="row left" style="--d:1.8s">
+            <b>4. สิ้นสุด & เติมน้ำมัน</b>
+            <span>บันทึกไมล์กลับ แนบสลิป/บิลน้ำมัน และคำนวณระยะทางสุทธิทันที</span>
+          </div>
+          <div class="row left" style="--d:2.0s">
+            <b>5. Milestone Guard</b>
+            <span>ระบบคำนวณรอบเปลี่ยนน้ำมันเครื่อง 10,000 กม. เทียบป้ายคอพวงมาลัย</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 5: 4-CAR BENTO COMMAND CENTER        -->
+    <!-- ========================================== -->
+    <section class="page" data-title="ศูนย์ควบคุม 4 คัน & วงแหวน">
+      <div class="ag">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">แดชบอร์ดติดตามสถานะ</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">ศูนย์สั่งการ Bento Fleet</span>
+            <b style="--d:.9s">และวงแหวนสถานะรถราชการ 4 คัน</b>
+          </h2>
+        </div>
+        <div class="keys">
+          <div class="key pop" style="--d:1.3s">
+            <kbd style="color:#FA114F;">ขก 225</kbd>
+            <span>นนทบุรี</span>
+            <small>ผขร. กฤษณ พัฒน์<br>ติดตามเลขไมล์ &amp; น้ำมันเครื่อง</small>
+          </div>
+          <div class="key pop" style="--d:1.5s">
+            <kbd style="color:#A8FF00;">กอ 409</kbd>
+            <span>นนทบุรี</span>
+            <small>ผขร. ประภาส<br>สถานะความพร้อมออกราชการ</small>
+          </div>
+          <div class="key pop" style="--d:1.7s">
+            <kbd style="color:#00F0FF;">ขก 192</kbd>
+            <span>นนทบุรี</span>
+            <small>ผขร. ธรรมรัตน์<br>บันทึกประวัติการบำรุงรักษา</small>
+          </div>
+          <div class="key pop hot" style="--d:1.9s">
+            <kbd style="color:#BF5AF2;">นจ 4648</kbd>
+            <span>นนทบุรี</span>
+            <small>ผขร. อนุพงศ์<br>ตรวจสอบความสมบูรณ์รอบ 10,000 กม.</small>
+          </div>
+        </div>
+        <div class="ag-pillrow"><span class="ag-pill pop" style="--d:2.6s">เห็นภาพรวมทั้งสำนักงานในหน้าจอเดียว ตอบสนองทุกการตรวจสอบ</span></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 6: 1-CLICK BATCH FORM 4 ENGINE       -->
+    <!-- ========================================== -->
+    <section class="page" data-title="พิมพ์แบบ 4 รวดเดียว 4 คัน">
+      <div class="ag"><div class="ag-center">
+        <div class="ag-core ignite" style="--d:.2s"><span class="ag-ring"></span><span class="ag-ring"></span><span class="ag-bot"><i>🖨️</i></span></div>
+        <span class="ag-kicker pop" style="--d:.7s">นวัตกรรมสร้างเอกสารราชการ</span>
+        <h2 class="ag-title">
+          <span style="--d:.9s">พิมพ์แบบ 4 ครบ 4 คัน</span>
+          <b style="--d:1.3s">รวดเดียวใน 1 คลิก (Batch Engine)</b>
+        </h2>
+        <div class="ag-chips">
+          <span class="pop" style="--d:1.8s">ตารางมาตรฐานระเบียบสำนักนายกฯ 100%</span>
+          <span class="pop" style="--d:2.0s">ดึงข้อมูล 4 คันอัตโนมัติ</span>
+          <span class="pop" style="--d:2.2s">บันทึกเป็น PDF หรือ พิมพ์ทันที</span>
+          <span class="pop" style="--d:2.4s">พร้อมช่องลงลายมือชื่อผู้อนุมัติ</span>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 7: FULL SYSTEM WORKFLOW (FLOW)       -->
+    <!-- ========================================== -->
+    <section class="page" data-title="Flow การทำงานของระบบ">
+      <div class="ag flow">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">สถาปัตยกรรมการไหลของข้อมูล</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">จากหน้าปัดรถยนต์</span>
+            <b style="--d:.9s">สู่รายงานผู้บริหาร &amp; คลาวด์</b>
+          </h2>
+        </div>
+        <div class="node pop" style="left:3em;top:26.5em;--d:1.3s">
+          <b>📱 ผขร. ขับขี่</b>
+          <small>ถ่ายรูปหน้าปัดไมล์</small>
+        </div>
+        <span class="ag-line" style="left:20em;top:31.5em;width:10em;--d:1.7s"><i></i></span>
+        
+        <div class="node pop" style="left:30em;top:26.5em;--d:2.1s">
+          <b>🧠 AI OCR &amp; DB</b>
+          <small>สกัดไมล์ · บันทึก SQLite</small>
+        </div>
+        <span class="ag-line" style="left:47em;top:31.5em;width:10em;--a:-35deg;--d:2.5s"><i></i></span>
+        <span class="ag-line" style="left:47em;top:31.5em;width:10em;--a:35deg;--d:2.5s"><i></i></span>
+        
+        <div class="node pop" style="left:57em;top:20em;--d:2.9s">
+          <b>🖨️ เอกสาร แบบ 4</b>
+          <small>พิมพ์ 4 คัน รวดเดียว</small>
+        </div>
+        <div class="node pop" style="left:57em;top:33em;--d:3.1s">
+          <b>☁️ Google Sheets</b>
+          <small>ซิงค์คลาวด์อัตโนมัติ</small>
+        </div>
+        
+        <span class="ag-line" style="left:74em;top:25.5em;width:8em;--a:35deg;--d:3.5s"><i></i></span>
+        <span class="ag-line" style="left:74em;top:38.5em;width:8em;--a:-35deg;--d:3.5s"><i></i></span>
+        
+        <div class="node pop" style="left:82em;top:26.5em;--d:3.9s">
+          <b>👩‍💼 ผู้บริหาร</b>
+          <small>ตรวจสอบ &amp; อนุมัติ</small>
+        </div>
+        <div class="loop fade" style="--d:4.4s">
+          <i></i>
+          <span>แจ้งเตือนรอบบำรุงรักษา 10,000 กม. · ข้อมูลสมบูรณ์ตรวจสอบย้อนหลังได้ตลอดเวลา</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 8: TWO-TIER SECURITY & MASTER VAULT  -->
+    <!-- ========================================== -->
+    <section class="page" data-title="ความปลอดภัย Master Vault 2424">
+      <div class="ag">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">ความมั่นคงปลอดภัยสูงสุด</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">ระบบความปลอดภัย 2 ชั้น</span>
+            <b style="--d:.9s">และ Master Vault สิทธิ์เฉพาะพี่ป๋อ</b>
+          </h2>
+        </div>
+        <div class="steps">
+          <div class="step up" style="--d:1.3s">
+            <h3><i>1</i>Tier 1: เจ้าหน้าที่</h3>
+            <p>เข้าสู่แดชบอร์ดด้วยรหัสผ่าน PIN ป้องกันบุคคลภายนอกเข้าดูข้อมูลและพิมพ์รายงาน</p>
+          </div>
+          <div class="step up" style="--d:1.8s">
+            <h3><i>2</i>Tier 2: Master Vault</h3>
+            <p>Master PIN (2424) สำหรับผู้ดูแลระบบสูงสุด ตรวจดูรหัสผ่าน และรีเซ็ตรหัสผ่านใน 1 คลิก</p>
+          </div>
+          <div class="step up" style="--d:2.3s">
+            <h3><i>3</i>Zero Exposure</h3>
+            <p>เมนูเชื่อมต่อ Google Drive ถูกเก็บรักษาไว้ในห้องนิรภัยเฉพาะ ปลอดภัย 100%</p>
+          </div>
+        </div>
+        <span class="ag-line steps-l1" style="--d:1.6s"></span>
+        <span class="ag-line steps-l2" style="--d:2.1s"></span>
+        <div class="ag-pillrow"><span class="ag-pill pop" style="--d:2.9s">ควบคุมสิทธิ์อย่างเบ็ดเสร็จ ไม่ต้องกังวลเรื่องลืมรหัสผ่าน</span></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 9: IMPACT & VALUE DELIVERED          -->
+    <!-- ========================================== -->
+    <section class="page" data-title="ผลลัพธ์และความคุ้มค่า">
+      <div class="ag">
+        <div class="ag-head">
+          <span class="ag-kicker pop" style="--d:.3s">คุณค่าที่หน่วยงานได้รับ</span>
+          <h2 class="ag-title">
+            <span style="--d:.5s">ยกระดับการทำงานราชการ</span>
+            <b style="--d:.9s">สู่มาตรฐาน Smart Governance</b>
+          </h2>
+        </div>
+        <div class="keys">
+          <div class="key pop" style="--d:1.3s">
+            <kbd>⚡</kbd>
+            <span>ลดเวลา 90%</span>
+            <small>ไม่ต้องรวมบิลหรือพิมพ์ฟอร์มกระดาษทีละใบทุกสิ้นเดือน</small>
+          </div>
+          <div class="key pop" style="--d:1.5s">
+            <kbd>🛡️</kbd>
+            <span>แม่นยำ 100%</span>
+            <small>AI ตรวจจับตัวเลขไมล์ ลด Human Error ในการบันทึก</small>
+          </div>
+          <div class="key pop" style="--d:1.7s">
+            <kbd>🛢️</kbd>
+            <span>บำรุงรักษาตรงเวลา</span>
+            <small>ยืดอายุการใช้งานยานพาหนะ ลดค่าใช้จ่ายซ่อมแซมใหญ่</small>
+          </div>
+          <div class="key pop hot" style="--d:1.9s">
+            <kbd>📊</kbd>
+            <span>ตรวจสอบได้ทันที</span>
+            <small>ข้อมูลโปร่งใส พร้อมรับการตรวจจาก สตง. และหน่วยงานกำกับ</small>
+          </div>
+        </div>
+        <div class="ag-pillrow"><span class="ag-pill pop" style="--d:2.6s">ตอบโจทย์การบริหารภาครัฐยุคใหม่ ด้วยงบประมาณที่คุ้มค่าที่สุด</span></div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SLIDE 10: CLOSING & THANK YOU              -->
+    <!-- ========================================== -->
+    <section class="page" data-title="บทสรุป — ขอบพระคุณครับ">
+      <div class="ag"><div class="ag-center">
+        <div class="ag-core ignite" style="--d:.2s"><span class="ag-ring"></span><span class="ag-ring"></span><span class="ag-bot"><i>🙏</i></span></div>
+        <span class="ag-kicker pop" style="--d:.7s">สำนักงานพาณิชย์จังหวัดเพชรบุรี</span>
+        <h2 class="ag-title">
+          <span style="--d:.9s">มุ่งมั่นขับเคลื่อนงานราชการ</span>
+          <b style="--d:1.3s">ด้วยนวัตกรรมดิจิทัลเพื่อประชาชน</b>
+        </h2>
+        <p class="ag-sub up" style="--d:1.8s">ขอบพระคุณครับ</p>
+        <span class="ag-pill pop" style="--d:2.3s">ระบบพร้อมให้บริการและต่อยอดเต็มรูปแบบ</span>
+      </div></div>
+    </section>
+
+  </main>
+
+  <!-- Interactive Presentation Navigation Controls -->
+  <nav class="controls" aria-label="ควบคุมการนำเสนอ">
+    <button id="prev" aria-label="หน้าก่อนหน้า" title="หน้าก่อนหน้า (←)">←</button>
+    <button id="choose" aria-label="เลือกหน้า" title="เลือกหน้า (G)"><span id="count" aria-live="polite"></span> ▾</button>
+    <button id="next" aria-label="หน้าถัดไป" title="หน้าถัดไป (→ / Space)">→</button>
+    <button id="fullscreen" title="เต็มจอ (F)" aria-label="เต็มจอ">⛶</button>
+  </nav>
+
+  <!-- Live Cloned Thumbnail Slide Picker Dialog -->
+  <dialog id="picker" aria-labelledby="picker-title">
+    <header>
+      <h2 id="picker-title">เลือกหน้าสไลด์</h2>
+      <button id="close" aria-label="ปิดรายการหน้า">✕</button>
+    </header>
+    <div class="grid" id="grid"></div>
+    <p class="hint">→ / Space / Enter / คลิก = หน้าถัดไป · ← = ย้อนกลับ · F = เต็มจอ · G = เลือกหน้า · Home / End = หน้าแรก / หน้าสุดท้าย · มือถือปัดซ้าย–ขวา</p>
+  </dialog>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const pages = [...document.querySelectorAll('.page')];
+    let current = 0, idleTimer, touchStart = null, suppressClickUntil = 0;
+
+    // Build thumbnail clones dynamically using CSS container query sizing
+    const thumbs = pages.map((page, i) => {
+      const button = document.createElement('button'), view = document.createElement('div'), label = document.createElement('span');
+      button.className = 'thumb';
+      button.setAttribute('aria-label', `หน้า ${i + 1}: ${page.dataset.title}`);
+      view.className = 'thumb-view';
+      view.setAttribute('aria-hidden', 'true');
+      view.append(page.querySelector('.ag').cloneNode(true));
+      label.textContent = `${i + 1}. ${page.dataset.title}`;
+      button.append(view, label);
+      button.onclick = () => { $('picker').close(); show(i); };
+      $('grid').append(button);
+      return button;
+    });
+
+    function wake() {
+      document.body.classList.remove('idle');
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => { if (!$('picker').open) document.body.classList.add('idle'); }, 3000);
+    }
+
+    function show(index) {
+      current = Math.max(0, Math.min(pages.length - 1, index));
+      pages.forEach((page, i) => page.classList.toggle('on', i === current));
+      thumbs.forEach((thumb, i) => thumb.setAttribute('aria-current', String(i === current)));
+      $('count').textContent = `${current + 1} / ${pages.length}`;
+      $('prev').disabled = current === 0;
+      $('next').disabled = current === pages.length - 1;
+      document.title = `${current + 1} · ${pages[current].dataset.title}`;
+      if (location.hash !== '#' + (current + 1)) history.replaceState(null, '', '#' + (current + 1));
+      wake();
+    }
+
+    function fromHash() {
+      const page = Number(location.hash.slice(1));
+      show(Number.isInteger(page) && page > 0 ? page - 1 : 0);
+    }
+
+    function choose() { wake(); $('picker').showModal(); thumbs[current].focus(); }
+
+    async function fullscreen() {
+      try { 
+        document.fullscreenElement ? await document.exitFullscreen() : await document.documentElement.requestFullscreen(); 
+      } catch { 
+        $('fullscreen').title = 'เบราว์เซอร์นี้ไม่รองรับโหมดเต็มจอ'; 
+      }
+    }
+
+    $('prev').onclick = () => show(current - 1);
+    $('next').onclick = () => show(current + 1);
+    $('choose').onclick = choose;
+    $('close').onclick = () => $('picker').close();
+    $('fullscreen').onclick = fullscreen;
+    $('picker').addEventListener('close', wake);
+    $('picker').addEventListener('click', e => {
+      const r = $('picker').getBoundingClientRect();
+      if (e.target === $('picker') && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)) $('picker').close();
+    });
+    $('stage').onclick = () => { if (Date.now() > suppressClickUntil) show(current + 1); };
+
+    // Keyboard navigation
+    document.addEventListener('keydown', e => {
+      if ($('picker').open || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.closest('button') && [' ', 'Enter'].includes(e.key)) return;
+      const next = () => show(current + 1), prev = () => show(current - 1);
+      const actions = {
+        ArrowRight: next, ArrowDown: next, ' ': next, Enter: next, PageDown: next,
+        ArrowLeft: prev, ArrowUp: prev, PageUp: prev,
+        Home: () => show(0), End: () => show(pages.length - 1),
+        KeyF: fullscreen, KeyG: choose,
+      };
+      const action = actions[e.key] ?? actions[e.code];
+      if (action) { e.preventDefault(); action(); }
+    });
+
+    // Touch gesture navigation
+    $('stage').addEventListener('touchstart', e => { 
+      const t = e.changedTouches[0]; 
+      touchStart = { x: t.clientX, y: t.clientY }; 
+    }, { passive: true });
+
+    $('stage').addEventListener('touchend', e => {
+      if (!touchStart) return;
+      const t = e.changedTouches[0], dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { 
+        suppressClickUntil = Date.now() + 500; 
+        show(current + (dx < 0 ? 1 : -1)); 
+      }
+    });
+    $('stage').addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+
+    document.addEventListener('pointermove', wake);
+    document.addEventListener('pointerdown', wake);
+    document.addEventListener('focusin', wake);
+    document.addEventListener('fullscreenchange', () => { 
+      $('fullscreen').title = document.fullscreenElement ? 'ออกเต็มจอ (F)' : 'เต็มจอ (F)'; 
+      wake(); 
+    });
+
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
+  </script>
+</body>
+</html>
