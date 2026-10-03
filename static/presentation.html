@@ -63,40 +63,40 @@
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
     }
 
-    /* ---------- Auto-Landscape Engine for Mobile Portrait ---------- */
-    @media (orientation: portrait) and (max-width: 900px) {
-      body {
-        overflow: hidden;
-      }
-      #stage {
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        width: 100dvh !important;
-        height: 100dvw !important;
-        transform: translate(-50%, -50%) rotate(90deg) !important;
-        transform-origin: center center !important;
-      }
+    /* ---------- Dynamic Responsive Screen Orientation ---------- */
+    .ag { 
+      position: relative; 
+      z-index: 0; 
+      width: min(100vw, 177.78dvh); 
+      aspect-ratio: 16 / 9; 
+      font-size: min(1vw, 1.7778dvh); 
+      color: #f4ead6; 
+      overflow: hidden; 
+      line-height: 1.35; 
+      transition: width .3s ease, font-size .3s ease;
+    }
+
+    /* In Landscape: Fill the screen height and width perfectly */
+    @media (orientation: landscape) {
       .ag {
-        width: min(100dvh, 177.78dvw) !important;
-        aspect-ratio: 16 / 9 !important;
-        font-size: min(1dvh, 1.7778dvw) !important;
-      }
-      .controls {
-        top: max(12px, env(safe-area-inset-right)) !important;
-        right: max(12px, env(safe-area-inset-top)) !important;
-        transform: rotate(90deg) !important;
-        transform-origin: top right !important;
-      }
-      dialog {
-        transform: rotate(90deg) !important;
-        max-width: 90dvh !important;
-        max-height: 85dvw !important;
+        width: min(100vw, 177.78dvh);
+        height: min(56.25vw, 100dvh);
+        font-size: min(1vw, 1.7778dvh);
       }
     }
 
-    /* ---------- slide stage: always 16:9, 1em = 1% of its width ---------- */
-    .ag { position: relative; z-index: 0; width: min(100vw, 177.78dvh); aspect-ratio: 16 / 9; font-size: min(1vw, 1.7778dvh); color: #f4ead6; overflow: hidden; line-height: 1.35; }
+    /* In Portrait: Center cleanly on mobile screen */
+    @media (orientation: portrait) {
+      .ag {
+        width: 100vw;
+        aspect-ratio: 16 / 9;
+        font-size: 1vw;
+      }
+      dialog {
+        width: 92vw;
+        max-height: 85dvh;
+      }
+    }
     .ag::before { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 58%, #1a3a68 0, #0d2242 42%, #081830 75%, #071426 100%); }
     .ag::after { content: ''; position: absolute; z-index: -1; left: -25%; right: -25%; top: 36%; height: 150%; border-radius: 50%; border-top: .14em solid #d4a84b44; }
     .ag > * { position: absolute; margin: 0; }
