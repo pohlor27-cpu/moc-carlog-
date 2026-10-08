@@ -1125,22 +1125,31 @@ def get_driver_monthly_report(driver_id: int, month: str):
             is_manual = 0
             if day_trips:
                 trip_texts = []
-                for t in day_trips:
+                for idx, t in enumerate(day_trips, 1):
                     plate = t.get("license_plate", "รถประจำสำนักงาน")
                     dest = t.get("destination", "ปฏิบัติภารกิจราชการ")
+                    approver = (t.get("approver") or "").strip()
                     d_time = t.get("depart_time", "")
                     a_time = t.get("arrive_time", "")
                     dist = t.get("distance_km")
+                    fuel = t.get("fuel_liters")
                     
-                    time_part = f"เวลา {d_time} น." if d_time else ""
+                    time_part = ""
                     if d_time and a_time:
-                        time_part = f"เวลา {d_time} - {a_time} น."
+                        time_part = f"เวลา {d_time} - {a_time} น. "
+                    elif d_time:
+                        time_part = f"เวลา {d_time} น. "
                     
+                    passenger_part = f"พา {approver} " if approver else ""
                     dist_part = f" (ระยะทาง {dist} กม.)" if dist and dist > 0 else ""
+                    fuel_part = f" [เติมน้ำมันเชื้อเพลิง {fuel:g} ลิตร]" if fuel and fuel > 0 else ""
                     
-                    trip_texts.append(f"{time_part} ขับรถยนต์ หมายเลขทะเบียน {plate} ไปปฏิบัติราชการ {dest}{dist_part}".strip())
+                    if len(day_trips) > 1:
+                        trip_texts.append(f"• เที่ยวที่ {idx}: {time_part}ขับรถยนต์ หมายเลขทะเบียน {plate} {passenger_part}ไปปฏิบัติราชการ {dest}{dist_part}{fuel_part}".strip())
+                    else:
+                        trip_texts.append(f"{time_part}ขับรถยนต์ หมายเลขทะเบียน {plate} {passenger_part}ไปปฏิบัติราชการ {dest}{dist_part}{fuel_part}".strip())
                 
-                work_detail = " / ".join(trip_texts)
+                work_detail = "\n".join(trip_texts)
             else:
                 if is_weekend:
                     work_detail = "วันหยุดราชการ"

@@ -1453,6 +1453,7 @@ body.printing-form4 #print-driver-report-area {
     padding: 5px 8px !important;
     vertical-align: middle !important;
     line-height: 1.45 !important;
+    white-space: pre-line !important;
   }
 
   .driver-report-signatures-print {
