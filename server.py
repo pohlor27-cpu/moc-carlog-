@@ -1042,6 +1042,194 @@ def serve_upload(filename: str):
         return FileResponse(file_path)
     return JSONResponse(status_code=404, content={"message": "Image not found"})
 
+# ==========================================
+# Driver Monthly Performance Report (แบบรายงานผลการปฏิบัติงานจ้างเหมาบุคคลภายนอก พนักงานขับรถยนต์)
+# ==========================================
+import calendar
+
+THAI_MONTH_NAMES = [
+    "", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+]
+
+THAI_DAY_NAMES = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+
+@app.get("/api/driver-reports")
+def get_driver_monthly_report(driver_id: int, month: str):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    # 1. Driver Info
+    cursor.execute("SELECT * FROM drivers WHERE id = ?", (driver_id,))
+    driver = cursor.fetchone()
+    if not driver:
+        conn.close()
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลพนักงานขับรถ")
+    
+    driver_dict = dict(driver)
+    
+    # 2. Parse year and month
+    try:
+        parts = month.split("-")
+        y, m = int(parts[0]), int(parts[1])
+    except Exception:
+        now = datetime.now()
+        y, m = now.year, now.month
+        month = f"{y:04d}-{m:02d}"
+        
+    num_days = calendar.monthrange(y, m)[1]
+    buddhist_year = y + 543
+    thai_month_str = f"{THAI_MONTH_NAMES[m]} {buddhist_year}"
+    
+    # 3. Get manual edits from driver_monthly_logs
+    cursor.execute("""
+        SELECT day_num, work_detail, is_manual_edit
+        FROM driver_monthly_logs
+        WHERE driver_id = ? AND report_month = ?
+    """, (driver_id, month))
+    saved_logs = {row["day_num"]: {"work_detail": row["work_detail"], "is_manual_edit": row["is_manual_edit"]} for row in cursor.fetchall()}
+    
+    # 4. Get trips for this driver in this month
+    cursor.execute("""
+        SELECT t.*, v.license_plate, v.model as vehicle_model
+        FROM trips t
+        JOIN vehicles v ON t.vehicle_id = v.id
+        WHERE t.driver_id = ? AND t.depart_date LIKE ?
+        ORDER BY t.depart_date ASC, t.depart_time ASC, t.id ASC
+    """, (driver_id, f"{month}%"))
+    
+    month_trips = cursor.fetchall()
+    trips_by_day = {}
+    for r in month_trips:
+        t = dict(r)
+        try:
+            d_num = int(t["depart_date"].split("-")[2])
+            if d_num not in trips_by_day:
+                trips_by_day[d_num] = []
+            trips_by_day[d_num].append(t)
+        except Exception:
+            pass
+            
+    days_data = []
+    for day in range(1, num_days + 1):
+        dt = datetime(y, m, day)
+        weekday = dt.weekday() # 0 = Monday, 6 = Sunday
+        is_weekend = (weekday in [5, 6])
+        day_trips = trips_by_day.get(day, [])
+        
+        # Determine work detail
+        if day in saved_logs:
+            work_detail = saved_logs[day]["work_detail"]
+            is_manual = saved_logs[day]["is_manual_edit"]
+        else:
+            is_manual = 0
+            if day_trips:
+                trip_texts = []
+                for t in day_trips:
+                    plate = t.get("license_plate", "รถประจำสำนักงาน")
+                    dest = t.get("destination", "ปฏิบัติภารกิจราชการ")
+                    d_time = t.get("depart_time", "")
+                    a_time = t.get("arrive_time", "")
+                    dist = t.get("distance_km")
+                    
+                    time_part = f"เวลา {d_time} น." if d_time else ""
+                    if d_time and a_time:
+                        time_part = f"เวลา {d_time} - {a_time} น."
+                    
+                    dist_part = f" (ระยะทาง {dist} กม.)" if dist and dist > 0 else ""
+                    
+                    trip_texts.append(f"{time_part} ขับรถยนต์ หมายเลขทะเบียน {plate} ไปปฏิบัติราชการ {dest}{dist_part}".strip())
+                
+                work_detail = " / ".join(trip_texts)
+            else:
+                if is_weekend:
+                    work_detail = "วันหยุดราชการ"
+                else:
+                    work_detail = "ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ ประจำสำนักงาน"
+        
+        days_data.append({
+            "day_num": day,
+            "date_str": f"{y:04d}-{m:02d}-{day:02d}",
+            "thai_date_str": f"{day} {THAI_MONTH_NAMES[m]} {buddhist_year}",
+            "weekday_name": THAI_DAY_NAMES[weekday],
+            "is_weekend": is_weekend,
+            "trips_count": len(day_trips),
+            "work_detail": work_detail,
+            "is_manual_edit": is_manual
+        })
+        
+    conn.close()
+    
+    agency_name = get_setting_val("agency_name", "สำนักงานพาณิชย์จังหวัดเพชรบุรี")
+    contractor_title = "นาย"
+    d_name = driver_dict['name']
+    if d_name.startswith("นาย") or d_name.startswith("นาง") or d_name.startswith("น.ส."):
+        full_contractor = d_name
+    else:
+        full_contractor = f"{contractor_title}{d_name}"
+    
+    return {
+        "driver": driver_dict,
+        "month": month,
+        "month_thai": thai_month_str,
+        "buddhist_year": buddhist_year,
+        "employer_name": agency_name,
+        "contractor_name": full_contractor,
+        "days": days_data
+    }
+
+class DriverReportSaveItem(BaseModel):
+    day_num: int
+    work_detail: str
+
+class DriverReportBatchSave(BaseModel):
+    driver_id: int
+    report_month: str
+    items: List[DriverReportSaveItem]
+
+@app.post("/api/driver-reports/save")
+def save_driver_monthly_report(req: DriverReportBatchSave):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    now_str = datetime.now().isoformat()
+    for item in req.items:
+        cursor.execute("""
+            INSERT INTO driver_monthly_logs (driver_id, report_month, day_num, work_detail, is_manual_edit, updated_at)
+            VALUES (?, ?, ?, ?, 1, ?)
+            ON CONFLICT(driver_id, report_month, day_num)
+            DO UPDATE SET work_detail = excluded.work_detail, is_manual_edit = 1, updated_at = excluded.updated_at
+        """, (req.driver_id, req.report_month, item.day_num, item.work_detail.strip(), now_str))
+        
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "บันทึกข้อมูลผลการปฏิบัติงานเรียบร้อยแล้ว"}
+
+class DriverReportResetReq(BaseModel):
+    driver_id: int
+    report_month: str
+    day_num: Optional[int] = None
+
+@app.post("/api/driver-reports/reset")
+def reset_driver_monthly_report(req: DriverReportResetReq):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    if req.day_num is not None:
+        cursor.execute("""
+            DELETE FROM driver_monthly_logs
+            WHERE driver_id = ? AND report_month = ? AND day_num = ?
+        """, (req.driver_id, req.report_month, req.day_num))
+    else:
+        cursor.execute("""
+            DELETE FROM driver_monthly_logs
+            WHERE driver_id = ? AND report_month = ?
+        """, (req.driver_id, req.report_month))
+        
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "คืนค่าเริ่มต้นจากระบบบันทึกการเดินทางเรียบร้อยแล้ว"}
+
 # Mount static frontend files
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)

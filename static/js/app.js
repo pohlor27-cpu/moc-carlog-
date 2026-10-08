@@ -94,6 +94,7 @@ async function loadDrivers() {
         const data = await res.json();
         appState.drivers = data.drivers || [];
         renderDriversGrid();
+        initDriverReportUI();
     } catch (e) {
         console.error("Error loading drivers:", e);
     }
@@ -1716,21 +1717,34 @@ function checkModeratorAuth() {
 }
 
 function switchTab(tabName) {
+    const driverBtn = document.getElementById("tab-driver-btn");
+    const modBtn = document.getElementById("tab-moderator-btn");
+    const reportBtn = document.getElementById("tab-driver-report-btn");
+    const driverView = document.getElementById("view-driver");
+    const modView = document.getElementById("view-moderator");
+    const reportView = document.getElementById("view-driver-report");
+
+    if (driverBtn) driverBtn.classList.remove("active");
+    if (modBtn) modBtn.classList.remove("active");
+    if (reportBtn) reportBtn.classList.remove("active");
+
+    if (driverView) driverView.style.display = "none";
+    if (modView) modView.style.display = "none";
+    if (reportView) reportView.style.display = "none";
+
     if (tabName === 'moderator') {
         if (!checkModeratorAuth()) {
             openPinAuthModal();
             return;
         }
         actuallyOpenModeratorView();
+    } else if (tabName === 'driver-report') {
+        if (reportBtn) reportBtn.classList.add("active");
+        if (reportView) reportView.style.display = "block";
+        initDriverReportUI();
+        loadDriverPerformanceReport();
     } else {
-        const driverBtn = document.getElementById("tab-driver-btn");
-        const modBtn = document.getElementById("tab-moderator-btn");
-        const driverView = document.getElementById("view-driver");
-        const modView = document.getElementById("view-moderator");
-
-        if (modBtn) modBtn.classList.remove("active");
         if (driverBtn) driverBtn.classList.add("active");
-        if (modView) modView.style.display = "none";
         if (driverView) driverView.style.display = "block";
     }
 }
@@ -2505,3 +2519,262 @@ async function submitMaintenance(event) {
         alert("เกิดข้อผิดพลาด: " + e.message);
     }
 }
+
+// ============================================================
+// DRIVER MONTHLY PERFORMANCE REPORT LOGIC (ผลการปฏิบัติงาน ผขร. จ้างเหมา)
+// ============================================================
+let currentReportData = null;
+
+function initDriverReportUI() {
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    const monthSelect = document.getElementById("driver-report-month-select");
+    
+    if (driverSelect && appState.drivers && appState.drivers.length > 0) {
+        const currentVal = driverSelect.value;
+        driverSelect.innerHTML = appState.drivers.map(d => {
+            const displayName = (d.name.startsWith('นาย') || d.name.startsWith('นาง') || d.name.startsWith('น.ส.')) ? d.name : `นาย${d.name}`;
+            return `<option value="${d.id}">${displayName}</option>`;
+        }).join('');
+        
+        if (currentVal && appState.drivers.some(d => d.id == currentVal)) {
+            driverSelect.value = currentVal;
+        } else if (appState.currentDriverId) {
+            driverSelect.value = appState.currentDriverId;
+        }
+    }
+    
+    if (monthSelect && !monthSelect.value) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        monthSelect.value = `${y}-${m}`;
+    }
+}
+
+async function loadDriverPerformanceReport() {
+    initDriverReportUI();
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    const monthSelect = document.getElementById("driver-report-month-select");
+    
+    const driverId = driverSelect?.value || (appState.currentDriverId || 1);
+    const monthStr = monthSelect?.value || (new Date().toISOString().slice(0, 7));
+    
+    const tbody = document.getElementById("interactive-report-tbody");
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding: 28px; color: #64748b; font-size: 1.05rem;">⏳ กำลังประมวลผลและเรียบเรียงสรุปงานรายวัน...</td></tr>`;
+    }
+    
+    try {
+        const res = await fetch(`/api/driver-reports?driver_id=${driverId}&month=${monthStr}`);
+        if (!res.ok) throw new Error("ไม่สามารถดึงข้อมูลรายงานได้");
+        
+        const data = await res.json();
+        currentReportData = data;
+        renderDriverPerformanceReport(data);
+    } catch (e) {
+        console.error("Error loading driver report:", e);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding: 28px; color: #ef4444; font-size: 1.05rem;">❌ เกิดข้อผิดพลาด: ${e.message}</td></tr>`;
+        }
+    }
+}
+
+function renderDriverPerformanceReport(data) {
+    if (!data) return;
+    
+    // Update Meta
+    const monthElem = document.getElementById("interactive-doc-month");
+    const employerElem = document.getElementById("interactive-doc-employer");
+    const contractorElem = document.getElementById("interactive-doc-contractor");
+    const sigContractorElem = document.getElementById("interactive-sig-contractor");
+    
+    if (monthElem) monthElem.textContent = data.month_thai;
+    if (employerElem) employerElem.textContent = data.employer_name;
+    if (contractorElem) contractorElem.textContent = data.contractor_name;
+    if (sigContractorElem) sigContractorElem.textContent = data.contractor_name;
+    
+    // Render Interactive Table Rows
+    const tbody = document.getElementById("interactive-report-tbody");
+    if (!tbody) return;
+    
+    tbody.innerHTML = data.days.map(d => {
+        const rowBg = d.is_weekend ? 'class="row-weekend"' : '';
+        const dayDisplay = `${d.day_num}`;
+        const editBadge = d.is_manual_edit ? `<span class="report-badge-edit">✏️ บันทึกแก้ไขแล้ว</span>` : '';
+        
+        return `
+            <tr ${rowBg} data-day="${d.day_num}">
+                <td style="text-align: center; font-weight: 700; vertical-align: top; padding-top: 10px; border: 1.5px solid #000; font-size: 1.05rem;">
+                    ${dayDisplay}
+                </td>
+                <td style="border: 1.5px solid #000; padding: 6px 10px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                        <textarea class="driver-report-cell-edit" data-day="${d.day_num}" rows="2" placeholder="พิมพ์รายละเอียดงานที่ปฏิบัติ...">${escapeHtml(d.work_detail || '')}</textarea>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: #64748b; padding: 0 4px;">
+                            <span>วัน${d.weekday_name} (${d.trips_count > 0 ? `🚗 เดินทาง ${d.trips_count} เที่ยว` : 'ไม่มีบันทึกออกรถ'})${editBadge}</span>
+                            <button type="button" onclick="quickResetSingleDay(${d.day_num})" style="background: none; border: none; color: #64748b; font-size: 0.8rem; cursor: pointer; text-decoration: underline;" title="ดึงข้อความอัตโนมัติเฉพาะวันนี้ใหม่">🔄 คืนค่าอัตโนมัติ</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Also prepare Print Area
+    renderPrintDriverReport(data);
+}
+
+function renderPrintDriverReport(data) {
+    if (!data) return;
+    
+    const printMonth = document.getElementById("print-report-month");
+    const printEmployer = document.getElementById("print-report-employer");
+    const printContractor = document.getElementById("print-report-contractor");
+    const printSigDriver = document.getElementById("print-report-sig-driver");
+    const printTbody = document.getElementById("print-report-tbody");
+    
+    if (printMonth) printMonth.textContent = data.month_thai;
+    if (printEmployer) printEmployer.textContent = data.employer_name;
+    if (printContractor) printContractor.textContent = data.contractor_name;
+    if (printSigDriver) printSigDriver.textContent = data.contractor_name;
+    
+    if (printTbody) {
+        printTbody.innerHTML = data.days.map(d => `
+            <tr>
+                <td style="text-align: center; font-weight: bold; border: 1.2pt solid #000; vertical-align: top; padding-top: 6px;">${d.day_num}</td>
+                <td style="border: 1.2pt solid #000; padding: 5px 8px; line-height: 1.45;">${escapeHtml(d.work_detail || '')}</td>
+            </tr>
+        `).join('');
+    }
+}
+
+async function saveDriverReportChanges() {
+    if (!currentReportData) return;
+    
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    const monthSelect = document.getElementById("driver-report-month-select");
+    const driverId = parseInt(driverSelect?.value || currentReportData.driver.id);
+    const monthStr = monthSelect?.value || currentReportData.month;
+    
+    const textareas = document.querySelectorAll(".driver-report-cell-edit");
+    const items = [];
+    
+    textareas.forEach(ta => {
+        const dayNum = parseInt(ta.getAttribute("data-day"));
+        items.push({
+            day_num: dayNum,
+            work_detail: ta.value.trim()
+        });
+    });
+    
+    try {
+        const res = await fetch("/api/driver-reports/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: monthStr,
+                items: items
+            })
+        });
+        
+        const resData = await res.json();
+        if (res.ok && resData.success) {
+            alert("💾 บันทึกผลการปฏิบัติงาน ผขร. เรียบร้อยแล้วครับ!");
+            await loadDriverPerformanceReport();
+        } else {
+            throw new Error(resData.detail || "บันทึกไม่สำเร็จ");
+        }
+    } catch (e) {
+        console.error("Save error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+async function resetDriverReportAuto() {
+    if (!currentReportData) return;
+    
+    if (!confirm("⚠️ ต้องการรีเซ็ตข้อความสรุปทั้งหมดกลับเป็นค่าที่ระบบประมวลผลอัตโนมัติจากเที่ยวรถใช่หรือไม่?")) {
+        return;
+    }
+    
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    const monthSelect = document.getElementById("driver-report-month-select");
+    const driverId = parseInt(driverSelect?.value || currentReportData.driver.id);
+    const monthStr = monthSelect?.value || currentReportData.month;
+    
+    try {
+        const res = await fetch("/api/driver-reports/reset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: monthStr
+            })
+        });
+        
+        const resData = await res.json();
+        if (res.ok && resData.success) {
+            alert("🔄 รีเซ็ตข้อความทั้งหมดกลับเป็นค่าเริ่มต้นอัตโนมัติเรียบร้อยแล้วครับ!");
+            await loadDriverPerformanceReport();
+        } else {
+            throw new Error(resData.detail || "รีเซ็ตไม่สำเร็จ");
+        }
+    } catch (e) {
+        console.error("Reset error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+async function quickResetSingleDay(dayNum) {
+    if (!currentReportData) return;
+    
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    const monthSelect = document.getElementById("driver-report-month-select");
+    const driverId = parseInt(driverSelect?.value || currentReportData.driver.id);
+    const monthStr = monthSelect?.value || currentReportData.month;
+    
+    try {
+        const res = await fetch("/api/driver-reports/reset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: monthStr,
+                day_num: dayNum
+            })
+        });
+        
+        const resData = await res.json();
+        if (res.ok && resData.success) {
+            await loadDriverPerformanceReport();
+        }
+    } catch (e) {
+        console.error("Reset day error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+function printDriverPerformanceReport() {
+    if (!currentReportData) {
+        alert("⚠️ กรุณารอโหลดข้อมูลให้เสร็จก่อนสั่งพิมพ์");
+        return;
+    }
+    
+    // Sync current textarea edits to print template before printing
+    const textareas = document.querySelectorAll(".driver-report-cell-edit");
+    textareas.forEach(ta => {
+        const dayNum = parseInt(ta.getAttribute("data-day"));
+        if (currentReportData.days && currentReportData.days[dayNum - 1]) {
+            currentReportData.days[dayNum - 1].work_detail = ta.value.trim();
+        }
+    });
+    renderPrintDriverReport(currentReportData);
+    
+    document.body.className = "printing-driver-report";
+    window.print();
+    setTimeout(() => {
+        document.body.className = "";
+    }, 1000);
+}
+

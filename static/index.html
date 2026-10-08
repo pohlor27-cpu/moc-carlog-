@@ -30,6 +30,7 @@
             </div>
             <div class="nav-tabs">
                 <button class="nav-tab-btn active" id="tab-driver-btn" onclick="switchTab('driver')">📱 หน้าหลัก (ผขร.)</button>
+                <button class="nav-tab-btn" id="tab-driver-report-btn" onclick="switchTab('driver-report')">📄 สรุปผลงาน ผขร. (จ้างเหมา)</button>
                 <button class="nav-tab-btn" id="tab-moderator-btn" onclick="switchTab('moderator')">👩‍💼 แดชบอร์ดเจ้าหน้าที่</button>
             </div>
         </div>
@@ -122,6 +123,9 @@
                         <select id="filter-vehicle" class="form-select" style="width: auto; padding: 8px 12px;">
                             <option value="">-- ขก 225 นนทบุรี --</option>
                         </select>
+                        <button class="btn-submit" onclick="switchTab('driver-report')" style="padding: 8px 14px; font-size: 0.9rem; background: #2563eb; display: flex; align-items: center; gap: 6px;">
+                            <span>📄</span> ใบส่งมอบงาน ผขร. (จ้างเหมา)
+                        </button>
                         <button class="btn-submit" onclick="generateForm4Print()" style="padding: 8px 14px; font-size: 0.9rem; background: #0f172a; display: flex; align-items: center; gap: 6px;">
                             <span>🖨️</span> สั่งพิมพ์ / บันทึกเป็น PDF (แนวนอน)
                         </button>
@@ -307,6 +311,106 @@
                     </table>
                 </div>
             </section>
+
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: DRIVER PERFORMANCE REPORT (ผลการปฏิบัติงานจ้างเหมา ผขร.) -->
+        <!-- ========================================== -->
+        <div id="view-driver-report" style="display: none;">
+            
+            <!-- Control Toolbar -->
+            <section style="background: var(--surface-tile-1); border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 24px; border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
+                    <div>
+                        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
+                            <span>📄</span> ผลการปฏิบัติงานจ้างเหมาบุคคลภายนอก พนักงานขับรถยนต์
+                        </h2>
+                        <p style="font-size: 0.88rem; color: var(--body-muted); margin: 0;">
+                            สรุปงานรายวันประจำเดือนอัตโนมัติ สามารถกดแก้ไขข้อความในแต่ละวันได้ และสั่งพิมพ์เอกสาร A4 ตามแบบราชการ
+                        </p>
+                    </div>
+
+                    <!-- Toolbar Filter & Actions -->
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="driver-report-driver-select" style="font-size: 0.88rem; font-weight: 600; color: #cbd5e1;">ผขร.:</label>
+                            <select id="driver-report-driver-select" class="form-select" onchange="loadDriverPerformanceReport()" style="padding: 8px 12px; font-weight: 600; min-width: 170px;">
+                                <!-- Populated dynamically via JS -->
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="driver-report-month-select" style="font-size: 0.88rem; font-weight: 600; color: #cbd5e1;">เดือน:</label>
+                            <input type="month" id="driver-report-month-select" class="form-input" onchange="loadDriverPerformanceReport()" style="padding: 8px 12px; width: auto;">
+                        </div>
+
+                        <button type="button" onclick="saveDriverReportChanges()" class="btn-submit" style="background: #2563eb; padding: 9px 16px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);">
+                            <span>💾</span> <strong>บันทึกการแก้ไข</strong>
+                        </button>
+
+                        <button type="button" onclick="resetDriverReportAuto()" class="chip-btn" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); color: #fff; padding: 9px 14px; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;" title="ดึงข้อมูลสรุปอัตโนมัติจากระบบบันทึกเที่ยวรถใหม่ทั้งหมด">
+                            <span>🔄</span> รีเซ็ตข้อความอัตโนมัติ
+                        </button>
+
+                        <button type="button" onclick="printDriverPerformanceReport()" class="btn-submit" style="background: #059669; padding: 9px 16px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);">
+                            <span>🖨️</span> <strong>สั่งพิมพ์ / PDF (A4)</strong>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Interactive Document Card (Visual clone of 207513.jpg) -->
+            <div class="driver-report-sheet-wrapper" style="background: #e2e8f0; padding: 30px 20px; border-radius: var(--radius-lg); box-shadow: inset 0 2px 8px rgba(0,0,0,0.08); overflow-x: auto; display: flex; justify-content: center;">
+                <div class="driver-report-paper-doc" id="driver-report-interactive-container" style="background: #ffffff; color: #111827; width: 100%; max-width: 860px; min-height: 1100px; padding: 50px 55px; border-radius: 4px; box-shadow: 0 10px 35px rgba(0,0,0,0.15); font-family: 'Sarabun', 'TH Sarabun New', sans-serif;">
+                    
+                    <!-- Document Header -->
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <h2 style="font-size: 1.45rem; font-weight: 700; margin: 0 0 10px 0; color: #000; letter-spacing: -0.01em;">ผลการปฏิบัติงานจ้างเหมาบุคคลภายนอก พนักงานขับรถยนต์</h2>
+                        <div style="font-size: 1.15rem; font-weight: 600; color: #111;">
+                            ประจำเดือน <span id="interactive-doc-month" style="font-weight: 700; color: #000; border-bottom: 1px dotted #000; padding: 0 12px; min-width: 200px; display: inline-block;">....................................................</span>
+                        </div>
+                    </div>
+
+                    <!-- Employer / Contractor Meta -->
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px; font-size: 1.1rem; line-height: 1.9;">
+                        <div style="text-align: left; min-width: 360px;">
+                            <div>ผู้ว่าจ้าง : <strong id="interactive-doc-employer" style="color: #000;">สำนักงานพาณิชย์จังหวัดเพชรบุรี</strong></div>
+                            <div>ผู้รับจ้าง : <strong id="interactive-doc-contractor" style="color: #000;">นายกฤษณพัฒน์ แสงทองคำ</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Editable Data Table -->
+                    <table class="driver-report-table-interactive" style="width: 100%; border-collapse: collapse; margin-bottom: 35px; font-size: 1.05rem;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="width: 14%; border: 1.5px solid #000; padding: 10px 6px; text-align: center; font-weight: 700; color: #000;">วันที่</th>
+                                <th style="width: 86%; border: 1.5px solid #000; padding: 10px 14px; text-align: center; font-weight: 700; color: #000;">รายละเอียดงานที่ปฏิบัติ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="interactive-report-tbody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+
+                    <!-- Signatures Footer -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 40px; font-size: 1.05rem; line-height: 1.9;">
+                        <div style="text-align: center;">
+                            <div>(ลงชื่อ)....................................................ผู้ส่งมอบงาน</div>
+                            <div style="margin-top: 4px;">( <strong id="interactive-sig-contractor">....................................................</strong> )</div>
+                            <div>ตำแหน่ง พนักงานขับรถยนต์</div>
+                            <div style="margin-top: 4px; color: #475569; font-size: 0.95rem;">วันที่ ......./......./.......</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div>(ลงชื่อ)....................................................ผู้ตรวจรับพัสดุ</div>
+                            <div style="margin-top: 4px;">( .................................................... )</div>
+                            <div>ประธานกรรมการตรวจรับพัสดุ</div>
+                            <div style="margin-top: 4px; color: #475569; font-size: 0.95rem;">วันที่ ......./......./.......</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
 
         </div>
 
@@ -1295,9 +1399,57 @@
         </div>
     </div>
 
+    <!-- ------------------------------------------------------------- -->
+    <!-- 6. TEMPLATE เอกสารราชการ: รายงานผลการปฏิบัติงาน ผขร. (จ้างเหมา) สำหรับสั่งพิมพ์ A4 แนวตั้ง -->
+    <!-- ------------------------------------------------------------- -->
+    <div id="print-driver-report-area" class="print-form-container" style="display: none;">
+        <div class="driver-report-print-page">
+            <div class="driver-report-header-print">
+                <h2 class="driver-report-title-print">ผลการปฏิบัติงานจ้างเหมาบุคคลภายนอก พนักงานขับรถยนต์</h2>
+                <div class="driver-report-month-print">
+                    ประจำเดือน <span id="print-report-month">....................................................</span>
+                </div>
+            </div>
+
+            <div class="driver-report-meta-print">
+                <div class="driver-report-meta-box">
+                    <div>ผู้ว่าจ้าง : <span id="print-report-employer">สำนักงานพาณิชย์จังหวัดเพชรบุรี</span></div>
+                    <div>ผู้รับจ้าง : <strong id="print-report-contractor">....................................................</strong></div>
+                </div>
+            </div>
+
+            <table class="driver-report-print-table">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">วันที่</th>
+                        <th style="width: 88%;">รายละเอียดงานที่ปฏิบัติ</th>
+                    </tr>
+                </thead>
+                <tbody id="print-report-tbody">
+                    <!-- Populated dynamically via JS -->
+                </tbody>
+            </table>
+
+            <div class="driver-report-signatures-print">
+                <div class="driver-report-sig-col">
+                    <div>(ลงชื่อ)....................................................ผู้ส่งมอบงาน</div>
+                    <div style="margin-top: 5px;">( <strong id="print-report-sig-driver">....................................................</strong> )</div>
+                    <div>ตำแหน่ง พนักงานขับรถยนต์</div>
+                    <div style="margin-top: 5px;">วันที่ ......./......./.......</div>
+                </div>
+                <div class="driver-report-sig-col">
+                    <div>(ลงชื่อ)....................................................ผู้ตรวจรับพัสดุ</div>
+                    <div style="margin-top: 5px;">( .................................................... )</div>
+                    <div>ประธานกรรมการตรวจรับพัสดุ</div>
+                    <div style="margin-top: 5px;">วันที่ ......./......./.......</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="/js/security_guard.js?v=1.0.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="/js/app.js?v=2.9.6"></script>
+    <script src="/js/app.js?v=3.0.0"></script>
 </body>
 </html>
