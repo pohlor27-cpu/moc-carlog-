@@ -257,6 +257,10 @@ export const HomeLogScreen: React.FC<HomeLogScreenProps> = ({
         {/* Landmark tags */}
         <div className="flex flex-wrap gap-2 mt-1">
           {[
+            { icon: '📮', name: 'ส่งเอกสาร' },
+            { icon: '🏷️', name: 'ตรวจสอบราคา' },
+            { icon: '📋', name: 'ตรวจสอบการปิดป้ายราคา' },
+            { icon: '📦', name: 'ตรวจสอบคลังสินค้า' },
             { icon: '🏛️', name: 'ศาลากลาง จ.เพชรบุรี' },
             { icon: '🏢', name: 'กระทรวงพาณิชย์' },
             { icon: '📮', name: 'ไปรษณีย์' },
