@@ -451,8 +451,47 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ (เว้นว่างได้)</label>
-                    <input type="text" id="depart-approver" class="form-input" placeholder="เช่น หัวหน้ากลุ่มยุทธศาสตร์ฯ / พาณิชย์จังหวัด">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">👤 ผู้รับรอง / ผู้ขอใช้รถ (เว้นว่างได้)</label>
+                        <span style="font-size: 0.75rem; color: #64748b;">(เลือกจากกลุ่มงาน หรือพิมพ์เอง)</span>
+                    </div>
+                    <select id="depart-approver-select" class="form-input" style="margin-bottom: 8px; background-color: #f8fafc; font-weight: 500;" onchange="selectApproverFromDropdown(this, 'depart-approver')">
+                        <option value="">-- แตะเลือกรายชื่อผู้รับรอง / ผู้ขอใช้รถ --</option>
+                        <option value="ปริญญา กำแหง พจ.เพชรบุรี">👑 ปริญญา กำแหง พจ.เพชรบุรี</option>
+                        <optgroup label="📁 กลุ่มยุทธศาสตร์และแผนงาน">
+                            <option value="สรณา บุญกำเนิด ผอ.กลุ่มยุทธศาสตร์ฯ">🎖️ สรณา บุญกำเนิด ผอ.กลุ่มยุทธศาสตร์ฯ</option>
+                            <option value="สิริวิมล พวงทอง">สิริวิมล พวงทอง</option>
+                            <option value="โอลดา แซ่โง้ว">โอลดา แซ่โง้ว</option>
+                            <option value="สุดารัตน์ ภู่สาย">สุดารัตน์ ภู่สาย</option>
+                            <option value="ชนากานต์ เทียนภู่">ชนากานต์ เทียนภู่</option>
+                            <option value="ภาวรินทร์ สว่างแวว">ภาวรินทร์ สว่างแวว</option>
+                            <option value="ปนัดดารัตน์ ประจันทร์">ปนัดดารัตน์ ประจันทร์</option>
+                            <option value="สิริมาส ฤๅชัย">สิริมาส ฤๅชัย</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มกำกับและพัฒนาเศรษฐกิจการค้า">
+                            <option value="สุรี สุขสวัสดิ์ ผอ.กลุ่มกำกับฯ">🎖️ สุรี สุขสวัสดิ์ ผอ.กลุ่มกำกับฯ</option>
+                            <option value="ธีรุตม์ คงฤทธิ์">ธีรุตม์ คงฤทธิ์</option>
+                            <option value="อนงนภัส ภิญโญ">อนงนภัส ภิญโญ</option>
+                            <option value="ภูตะวัน อยู่ทอง">ภูตะวัน อยู่ทอง</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มส่งเสริมการประกอบธุรกิจการค้าและการตลาด">
+                            <option value="ดารารัตน์ กาญจนภักดี ผอ.กลุ่มส่งเสริมฯ">🎖️ ดารารัตน์ กาญจนภักดี ผอ.กลุ่มส่งเสริมฯ</option>
+                            <option value="นพเกล้า ศรทอง">นพเกล้า ศรทอง</option>
+                            <option value="พรทิภา วงค์ดำเนิน">พรทิภา วงค์ดำเนิน</option>
+                            <option value="ปิญชาน์ ขันธโภค">ปิญชาน์ ขันธโภค</option>
+                            <option value="ณัฐธยาน์ แสงอินทร์">ณัฐธยาน์ แสงอินทร์</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มทะเบียนธุรกิจและอำนวยความสะดวกทางการค้า">
+                            <option value="ปารณีย์ รุ่งเรือง ผอ.กลุ่มทะเบียนฯ">🎖️ ปารณีย์ รุ่งเรือง ผอ.กลุ่มทะเบียนฯ</option>
+                            <option value="จุฑามาศ ศรีขำ">จุฑามาศ ศรีขำ</option>
+                            <option value="รันยรัตน์ พูลเพ็ชร์">รันยรัตน์ พูลเพ็ชร์</option>
+                            <option value="ณฐมน แก้วมา">ณฐมน แก้วมา</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มธุรการ / ฝ่ายบริหารทั่วไป">
+                            <option value="แก้วมณี น้อยแดง">แก้วมณี น้อยแดง</option>
+                        </optgroup>
+                    </select>
+                    <input type="text" id="depart-approver" class="form-input" placeholder="หรือพิมพ์ระบุผู้รับรอง / ผู้ขอใช้รถเอง">
                 </div>
 
                 <div class="modal-actions">
@@ -653,8 +692,47 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ</label>
-                    <input type="text" id="manual-approver" class="form-input" placeholder="เช่น หัวหน้ากลุ่มยุทธศาสตร์ฯ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">👤 ผู้รับรอง / ผู้ขอใช้รถ</label>
+                        <span style="font-size: 0.75rem; color: #64748b;">(เลือกจากกลุ่มงาน หรือพิมพ์เอง)</span>
+                    </div>
+                    <select id="manual-approver-select" class="form-input" style="margin-bottom: 8px; background-color: #f8fafc; font-weight: 500;" onchange="selectApproverFromDropdown(this, 'manual-approver')">
+                        <option value="">-- แตะเลือกรายชื่อผู้รับรอง / ผู้ขอใช้รถ --</option>
+                        <option value="ปริญญา กำแหง พจ.เพชรบุรี">👑 ปริญญา กำแหง พจ.เพชรบุรี</option>
+                        <optgroup label="📁 กลุ่มยุทธศาสตร์และแผนงาน">
+                            <option value="สรณา บุญกำเนิด ผอ.กลุ่มยุทธศาสตร์ฯ">🎖️ สรณา บุญกำเนิด ผอ.กลุ่มยุทธศาสตร์ฯ</option>
+                            <option value="สิริวิมล พวงทอง">สิริวิมล พวงทอง</option>
+                            <option value="โอลดา แซ่โง้ว">โอลดา แซ่โง้ว</option>
+                            <option value="สุดารัตน์ ภู่สาย">สุดารัตน์ ภู่สาย</option>
+                            <option value="ชนากานต์ เทียนภู่">ชนากานต์ เทียนภู่</option>
+                            <option value="ภาวรินทร์ สว่างแวว">ภาวรินทร์ สว่างแวว</option>
+                            <option value="ปนัดดารัตน์ ประจันทร์">ปนัดดารัตน์ ประจันทร์</option>
+                            <option value="สิริมาส ฤๅชัย">สิริมาส ฤๅชัย</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มกำกับและพัฒนาเศรษฐกิจการค้า">
+                            <option value="สุรี สุขสวัสดิ์ ผอ.กลุ่มกำกับฯ">🎖️ สุรี สุขสวัสดิ์ ผอ.กลุ่มกำกับฯ</option>
+                            <option value="ธีรุตม์ คงฤทธิ์">ธีรุตม์ คงฤทธิ์</option>
+                            <option value="อนงนภัส ภิญโญ">อนงนภัส ภิญโญ</option>
+                            <option value="ภูตะวัน อยู่ทอง">ภูตะวัน อยู่ทอง</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มส่งเสริมการประกอบธุรกิจการค้าและการตลาด">
+                            <option value="ดารารัตน์ กาญจนภักดี ผอ.กลุ่มส่งเสริมฯ">🎖️ ดารารัตน์ กาญจนภักดี ผอ.กลุ่มส่งเสริมฯ</option>
+                            <option value="นพเกล้า ศรทอง">นพเกล้า ศรทอง</option>
+                            <option value="พรทิภา วงค์ดำเนิน">พรทิภา วงค์ดำเนิน</option>
+                            <option value="ปิญชาน์ ขันธโภค">ปิญชาน์ ขันธโภค</option>
+                            <option value="ณัฐธยาน์ แสงอินทร์">ณัฐธยาน์ แสงอินทร์</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มทะเบียนธุรกิจและอำนวยความสะดวกทางการค้า">
+                            <option value="ปารณีย์ รุ่งเรือง ผอ.กลุ่มทะเบียนฯ">🎖️ ปารณีย์ รุ่งเรือง ผอ.กลุ่มทะเบียนฯ</option>
+                            <option value="จุฑามาศ ศรีขำ">จุฑามาศ ศรีขำ</option>
+                            <option value="รันยรัตน์ พูลเพ็ชร์">รันยรัตน์ พูลเพ็ชร์</option>
+                            <option value="ณฐมน แก้วมา">ณฐมน แก้วมา</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มธุรการ / ฝ่ายบริหารทั่วไป">
+                            <option value="แก้วมณี น้อยแดง">แก้วมณี น้อยแดง</option>
+                        </optgroup>
+                    </select>
+                    <input type="text" id="manual-approver" class="form-input" placeholder="หรือพิมพ์ระบุผู้รับรอง / ผู้ขอใช้รถเอง">
                 </div>
 
                 <!-- กลับถึง สนง. -->
@@ -813,8 +891,47 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">ผู้รับรอง / ผู้ขอใช้รถ</label>
-                    <input type="text" id="edit-trip-approver" class="form-input" placeholder="เช่น หัวหน้ากลุ่มยุทธศาสตร์ฯ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label class="form-label" style="margin-bottom:0;">👤 ผู้รับรอง / ผู้ขอใช้รถ</label>
+                        <span style="font-size: 0.75rem; color: #64748b;">(เลือกจากกลุ่มงาน หรือพิมพ์เอง)</span>
+                    </div>
+                    <select id="edit-trip-approver-select" class="form-input" style="margin-bottom: 8px; background-color: #f8fafc; font-weight: 500;" onchange="selectApproverFromDropdown(this, 'edit-trip-approver')">
+                        <option value="">-- แตะเลือกรายชื่อผู้รับรอง / ผู้ขอใช้รถ --</option>
+                        <option value="ปริญญา กำแหง พจ.เพชรบุรี">👑 ปริญญา กำแหง พจ.เพชรบุรี</option>
+                        <optgroup label="📁 กลุ่มยุทธศาสตร์และแผนงาน">
+                            <option value="สรณา บุญกำเนิด ผอ.กลุ่มยุทธศาสตร์ฯ">🎖️ สรณา บุญกำเนิด ผอ.กลุ่มยุทธศาสตร์ฯ</option>
+                            <option value="สิริวิมล พวงทอง">สิริวิมล พวงทอง</option>
+                            <option value="โอลดา แซ่โง้ว">โอลดา แซ่โง้ว</option>
+                            <option value="สุดารัตน์ ภู่สาย">สุดารัตน์ ภู่สาย</option>
+                            <option value="ชนากานต์ เทียนภู่">ชนากานต์ เทียนภู่</option>
+                            <option value="ภาวรินทร์ สว่างแวว">ภาวรินทร์ สว่างแวว</option>
+                            <option value="ปนัดดารัตน์ ประจันทร์">ปนัดดารัตน์ ประจันทร์</option>
+                            <option value="สิริมาส ฤๅชัย">สิริมาส ฤๅชัย</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มกำกับและพัฒนาเศรษฐกิจการค้า">
+                            <option value="สุรี สุขสวัสดิ์ ผอ.กลุ่มกำกับฯ">🎖️ สุรี สุขสวัสดิ์ ผอ.กลุ่มกำกับฯ</option>
+                            <option value="ธีรุตม์ คงฤทธิ์">ธีรุตม์ คงฤทธิ์</option>
+                            <option value="อนงนภัส ภิญโญ">อนงนภัส ภิญโญ</option>
+                            <option value="ภูตะวัน อยู่ทอง">ภูตะวัน อยู่ทอง</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มส่งเสริมการประกอบธุรกิจการค้าและการตลาด">
+                            <option value="ดารารัตน์ กาญจนภักดี ผอ.กลุ่มส่งเสริมฯ">🎖️ ดารารัตน์ กาญจนภักดี ผอ.กลุ่มส่งเสริมฯ</option>
+                            <option value="นพเกล้า ศรทอง">นพเกล้า ศรทอง</option>
+                            <option value="พรทิภา วงค์ดำเนิน">พรทิภา วงค์ดำเนิน</option>
+                            <option value="ปิญชาน์ ขันธโภค">ปิญชาน์ ขันธโภค</option>
+                            <option value="ณัฐธยาน์ แสงอินทร์">ณัฐธยาน์ แสงอินทร์</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มทะเบียนธุรกิจและอำนวยความสะดวกทางการค้า">
+                            <option value="ปารณีย์ รุ่งเรือง ผอ.กลุ่มทะเบียนฯ">🎖️ ปารณีย์ รุ่งเรือง ผอ.กลุ่มทะเบียนฯ</option>
+                            <option value="จุฑามาศ ศรีขำ">จุฑามาศ ศรีขำ</option>
+                            <option value="รันยรัตน์ พูลเพ็ชร์">รันยรัตน์ พูลเพ็ชร์</option>
+                            <option value="ณฐมน แก้วมา">ณฐมน แก้วมา</option>
+                        </optgroup>
+                        <optgroup label="📁 กลุ่มธุรการ / ฝ่ายบริหารทั่วไป">
+                            <option value="แก้วมณี น้อยแดง">แก้วมณี น้อยแดง</option>
+                        </optgroup>
+                    </select>
+                    <input type="text" id="edit-trip-approver" class="form-input" placeholder="หรือพิมพ์ระบุผู้รับรอง / ผู้ขอใช้รถเอง">
                 </div>
 
                 <!-- กลับถึง สนง. -->

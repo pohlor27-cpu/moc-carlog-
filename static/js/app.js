@@ -462,6 +462,8 @@ function openDepartModal() {
     document.getElementById("depart-destination").value = "";
     syncDestinationChips("depart-destination");
     document.getElementById("depart-approver").value = "";
+    const depAppSel = document.getElementById("depart-approver-select");
+    if (depAppSel) depAppSel.value = "";
     
     document.getElementById("modal-depart").classList.add("open");
 }
@@ -567,6 +569,8 @@ function openManualModal() {
     document.getElementById("manual-destination").value = "";
     syncDestinationChips("manual-destination");
     document.getElementById("manual-approver").value = "";
+    const manAppSel = document.getElementById("manual-approver-select");
+    if (manAppSel) manAppSel.value = "";
     document.getElementById("manual-fuel-liters").value = "";
     document.getElementById("manual-fuel-authorizer").value = "";
     
@@ -840,6 +844,15 @@ function syncDestinationChips(inputId) {
             chip.classList.remove("active-tag");
         }
     });
+}
+
+function selectApproverFromDropdown(selectEl, targetInputId) {
+    if (!selectEl || !targetInputId) return;
+    const val = selectEl.value;
+    const input = document.getElementById(targetInputId);
+    if (input) {
+        input.value = val;
+    }
 }
 
 // ----------------- Submissions -----------------
@@ -1348,6 +1361,8 @@ function openEditTripModal(tripId) {
     document.getElementById("edit-trip-destination").value = trip.destination || "";
     syncDestinationChips("edit-trip-destination");
     document.getElementById("edit-trip-approver").value = trip.approver || "";
+    const editAppSel = document.getElementById("edit-trip-approver-select");
+    if (editAppSel) editAppSel.value = trip.approver || "";
 
     // Arrive Info
     document.getElementById("edit-trip-arrive-date").value = trip.arrive_date || trip.depart_date || getTodayInputFormat();
