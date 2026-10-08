@@ -3,7 +3,7 @@ import shutil
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +24,34 @@ try:
     app.include_router(stitch_router)
 except Exception as e:
     print("[Stitch Bridge] Error importing router:", e)
+
+# ==========================================
+# Health Check & Keep-Alive Endpoints
+# ==========================================
+@app.get("/health")
+@app.get("/api/health")
+def health_check():
+    """Lightweight Health Check endpoint for Uptime monitoring and Render Keep-Alive."""
+    try:
+        conn = database.get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        db_ok = bool(cursor.fetchone())
+        conn.close()
+    except Exception:
+        db_ok = False
+
+    return JSONResponse(
+        status_code=200 if db_ok else 500,
+        content={
+            "status": "healthy" if db_ok else "unhealthy",
+            "app": "MOC Car Log System (แบบ 4)",
+            "version": "1.0.0",
+            "database": "connected" if db_ok else "disconnected",
+            "timestamp": datetime.now().isoformat(),
+            "agency": get_setting_val("agency_name", "สำนักงานพาณิชย์จังหวัดเพชรบุรี")
+        }
+    )
 
 # Enable CORS
 app.add_middleware(
@@ -859,13 +887,33 @@ def update_settings(settings: SettingUpdate):
 # -------------------------------------------------------------
 # Auth & Security APIs (Moderator PIN & Master Key for พี่ป๋อ)
 # -------------------------------------------------------------
+SECURITY_LOG_PATH = os.path.join(os.path.dirname(__file__), "moderator_security.log")
+
+def log_security_event(request: Request, action: str, status: str, details: str = ""):
+    """Records security audit log silently to moderator_security.log."""
+    try:
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "unknown")
+        if "," in client_ip:
+            client_ip = client_ip.split(",")[0].strip()
+        user_agent = request.headers.get("user-agent", "Unknown Device")
+        # Keep UA concise
+        ua_summary = user_agent[:120]
+        
+        log_line = f"[{now_str}] status={status} | ip={client_ip} | action={action} | details={details} | ua={ua_summary}\n"
+        with open(SECURITY_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception as e:
+        print("[Security Logger Error]", e)
+
 @app.post("/api/auth/verify-pin")
-def verify_pin(req: VerifyPinRequest):
+def verify_pin(req: VerifyPinRequest, request: Request):
     pin = req.pin.strip()
     current_mod_pin = get_setting_val("mod_pin", "9999")
     master_pin = get_setting_val("master_pin", "2424")
     
     if pin == "2424" or pin == master_pin:
+        log_security_event(request, action="LOGIN", status="SUCCESS_MASTER", details="Logged in with Master PIN (พี่ป๋อ)")
         return {
             "success": True,
             "role": "master",
@@ -874,34 +922,40 @@ def verify_pin(req: VerifyPinRequest):
             "master_pin": "2424"
         }
     elif pin == current_mod_pin or (not current_mod_pin and pin == "9999"):
+        log_security_event(request, action="LOGIN", status="SUCCESS_MOD", details=f"Logged in with Mod PIN '{pin}'")
         return {
             "success": True,
             "role": "moderator",
             "message": "เข้าสู่ระบบเจ้าหน้าที่สำเร็จ"
         }
     else:
+        log_security_event(request, action="LOGIN", status="FAILED", details=f"Incorrect PIN attempted: '{pin}'")
         return JSONResponse(
             status_code=401,
             content={"success": False, "message": "รหัส PIN ไม่ถูกต้อง โปรดตรวจสอบอีกครั้ง"}
         )
 
 @app.post("/api/auth/change-pin")
-def change_pin(req: ChangePinRequest):
+def change_pin(req: ChangePinRequest, request: Request):
     curr = req.current_pin.strip()
     new_p = req.new_pin.strip()
     
     if not new_p or len(new_p) < 4:
+        log_security_event(request, action="CHANGE_PIN", status="FAILED", details="New PIN too short")
         raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 4 หลัก")
     
     current_mod_pin = get_setting_val("mod_pin", "9999")
     master_pin = get_setting_val("master_pin", "2424")
     
     if curr != current_mod_pin and curr != "2424" and curr != master_pin:
+        log_security_event(request, action="CHANGE_PIN", status="FAILED", details=f"Wrong current PIN: '{curr}'")
         raise HTTPException(status_code=401, detail="รหัสผ่านเดิมไม่ถูกต้อง")
     
     set_setting_val("mod_pin", new_p)
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     set_setting_val("mod_pin_updated_at", now_str)
+    
+    log_security_event(request, action="CHANGE_PIN", status="SUCCESS", details=f"PIN changed: '{curr}' -> '{new_p}'")
     
     return {
         "success": True,
@@ -924,14 +978,17 @@ def get_mod_pin_status(master_pin: str = ""):
     }
 
 @app.post("/api/auth/reset-pin")
-def reset_pin(req: ResetPinRequest):
+def reset_pin(req: ResetPinRequest, request: Request):
     server_master = get_setting_val("master_pin", "2424")
     if req.master_pin.strip() != "2424" and req.master_pin.strip() != server_master:
+        log_security_event(request, action="RESET_PIN", status="FAILED", details="Unauthorized reset attempt")
         raise HTTPException(status_code=403, detail="ต้องใช้ Master PIN ของพี่ป๋อเพื่อรีเซ็ตรหัสผ่าน")
     
     set_setting_val("mod_pin", "9999")
     now_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     set_setting_val("mod_pin_updated_at", f"{now_str} (รีเซ็ตโดยพี่ป๋อ)")
+    
+    log_security_event(request, action="RESET_PIN", status="SUCCESS", details="PIN reset to '9999' by Master PIN (พี่ป๋อ)")
     
     return {
         "success": True,
@@ -939,6 +996,24 @@ def reset_pin(req: ResetPinRequest):
         "mod_pin": "9999",
         "updated_at": now_str
     }
+
+@app.get("/api/auth/security-logs")
+def get_security_logs(master_pin: str = ""):
+    server_master = get_setting_val("master_pin", "2424")
+    if master_pin.strip() != "2424" and master_pin.strip() != server_master:
+        raise HTTPException(status_code=403, detail="ต้องใช้ Master PIN ของพี่ป๋อเพื่อดู Security Logs")
+    
+    if not os.path.exists(SECURITY_LOG_PATH):
+        return {"logs": [], "total": 0}
+    
+    try:
+        with open(SECURITY_LOG_PATH, "r", encoding="utf-8") as f:
+            lines = [l.strip() for l in f.readlines() if l.strip()]
+        # Return last 150 lines (newest first)
+        lines.reverse()
+        return {"logs": lines[:150], "total": len(lines)}
+    except Exception as e:
+        return {"error": str(e), "logs": []}
 
 
 # Google Sheets Endpoints
