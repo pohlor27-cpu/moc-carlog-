@@ -1143,9 +1143,14 @@ def get_driver_monthly_report(driver_id: int, month: str):
                     elif d_time:
                         time_part = f"เวลา {d_time} น. "
                     
-                    # Rule: If mission is sending documents / mail, omit the approver passenger name
+                    # Rule 1: If mission is related to volunteer work (จิตอาสา/จิตรอาสา), use 'เจ้าหน้าที่' instead of approver name
+                    is_volunteer = any(k in dest for k in ["จิตอาสา", "จิตรอาสา"])
+                    # Rule 2: If mission is sending documents / mail, omit the approver passenger name
                     is_doc_dispatch = any(k in dest for k in ["ส่งเอกสาร", "ไปรษณีย์", "ส่งหนังสือ", "นำส่งเอกสาร"])
-                    if is_doc_dispatch or not approver:
+                    
+                    if is_volunteer:
+                        passenger_part = "พา เจ้าหน้าที่ "
+                    elif is_doc_dispatch or not approver:
                         passenger_part = ""
                     else:
                         passenger_part = f"พา {approver} "
