@@ -205,13 +205,28 @@
                 </div>
             </section>
 
-            <!-- 1. 4-Car Bento Grid Fleet Status -->
-            <div style="font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                <span>🚘</span> สถานะยานพาหนะประจำสำนักงาน (4 คัน)
+            <!-- Moderator Sub-Navigation Bar -->
+            <div class="mod-subnav-container">
+                <button type="button" class="mod-subnav-btn active" id="btn-mod-subnav-overview" onclick="switchModeratorSubTab('overview')">
+                    📊 สรุปการใช้รถ &amp; แบบ 4 (Fleet Overview)
+                </button>
+                <button type="button" class="mod-subnav-btn" id="btn-mod-subnav-matrix" onclick="switchModeratorSubTab('matrix')">
+                    📋 ตรวจรับผลงาน พขร. (Matrix รวม 4 คน)
+                </button>
+                <button type="button" class="mod-subnav-btn" id="btn-mod-subnav-individual" onclick="switchModeratorSubTab('individual')">
+                    🔍 ตรวจรับรายบุคคล &amp; เซ็นรับรอง (Official Checklist)
+                </button>
             </div>
-            <section class="bento-fleet-grid" id="moderator-bento-fleet">
-                <!-- Injected via JavaScript -->
-            </section>
+
+            <!-- SUBVIEW 1: FLEET OVERVIEW & FORM 4 (ของเดิม) -->
+            <div id="mod-subview-overview">
+                <!-- 1. 4-Car Bento Grid Fleet Status -->
+                <div style="font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span>🚘</span> สถานะยานพาหนะประจำสำนักงาน (4 คัน)
+                </div>
+                <section class="bento-fleet-grid" id="moderator-bento-fleet">
+                    <!-- Injected via JavaScript -->
+                </section>
 
             <!-- 2. Apple Fitness 3D Rings & Key Metrics -->
             <section class="analytics-grid">
@@ -311,6 +326,169 @@
                     </table>
                 </div>
             </section>
+            </div> <!-- close mod-subview-overview -->
+
+            <!-- SUBVIEW 2: MULTI-DRIVER DAILY MATRIX (ตรวจรับ 4 คนในหน้าเดียว) -->
+            <div id="mod-subview-matrix" style="display: none;">
+                <!-- Summary Metrics Bar -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                    <div class="verif-metric-card">
+                        <div class="verif-metric-icon" style="background: #eff6ff; color: #2563eb;">📅</div>
+                        <div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #0f172a;" id="matrix-metric-total-days">31 วัน</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">จำนวนวันในเดือนนี้</div>
+                        </div>
+                    </div>
+                    <div class="verif-metric-card">
+                        <div class="verif-metric-icon" style="background: #dcfce7; color: #15803d;">✅</div>
+                        <div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #15803d;" id="matrix-metric-verified-count">0 / 124</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">รายการที่ตรวจรับแล้ว (4 คน)</div>
+                        </div>
+                    </div>
+                    <div class="verif-metric-card">
+                        <div class="verif-metric-icon" style="background: #fef3c7; color: #b45309;">⏳</div>
+                        <div>
+                            <div style="font-size: 1.35rem; font-weight: 800; color: #b45309;" id="matrix-metric-pending-count">124 รายการ</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">รอเจ้าหน้าที่ตรวจรับ</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matrix Toolbar -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <div style="font-weight: 700; color: #0f172a; font-size: 1rem;">ตารางตรวจรับผลงาน พขร. ทั้ง 4 ท่าน ประจำเดือน <span id="matrix-month-label" style="color: #2563eb;">-</span></div>
+                        <div style="font-size: 0.82rem; color: #64748b;">คลิกที่ปุ่ม ☑️ เพื่อติ๊กถูกตรวจรับรายวัน หรือกดปุ่มอนุมัติรวดเดียวด้านขวา</div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn-submit" onclick="bulkVerifyAllDrivers('verify_all')" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px;">
+                            ✅ ตรวจรับผ่านทั้งหมด (4 คน)
+                        </button>
+                        <button type="button" class="btn-cancel" onclick="bulkVerifyAllDrivers('unverify_all')" style="font-size: 0.85rem; padding: 7px 14px;">
+                            🔄 ล้างสถานะตรวจรับ
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Matrix Table -->
+                <div class="matrix-table-container">
+                    <table class="matrix-table" id="matrix-overview-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 110px; text-align: center;">วันที่</th>
+                                <th style="width: 22%;">พขร. 1 (กฤษณพัฒน์)<br><span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">รถ ขก 225</span></th>
+                                <th style="width: 22%;">พขร. 2 (ประภาส)<br><span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">รถ กอ 409</span></th>
+                                <th style="width: 22%;">พขร. 3 (ธรรมรัตน์)<br><span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">รถ ขก 192</span></th>
+                                <th style="width: 22%;">พขร. 4 (อนุพงศ์)<br><span style="font-size: 0.75rem; font-weight: normal; color: #64748b;">รถ นจ 4648</span></th>
+                                <th style="text-align: center; width: 90px;">ตรวจครบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrix-overview-tbody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SUBVIEW 3: INDIVIDUAL DRIVER OFFICIAL CHECKLIST (ตรวจรับรายบุคคล & เซ็นรับรอง) -->
+            <div id="mod-subview-individual" style="display: none;">
+                <!-- Driver Selector Cards -->
+                <div style="font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 10px;">👤 เลือกพนักงานขับรถยนต์ที่ต้องการตรวจรับ:</div>
+                <div class="driver-selector-grid" id="individual-driver-selector">
+                    <!-- Injected via JS (4 cards) -->
+                </div>
+
+                <!-- Individual Header & Progress -->
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+                    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a;" id="individual-driver-title">นายกฤษณพัฒน์ แสงหล้า</div>
+                            <div style="font-size: 0.85rem; color: #64748b;" id="individual-driver-subtitle">รถประจำสำนักงาน หมายเลขทะเบียน ขก 225 นนทบุรี | ประจำเดือน ตุลาคม 2569</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="btn-submit" onclick="bulkVerifyCurrentDriver('verify_all')" style="background: #10b981; font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                ☑️ ติ๊กถูกครบทั้งเดือน
+                            </button>
+                            <button type="button" class="btn-cancel" onclick="bulkVerifyCurrentDriver('unverify_all')" style="font-size: 0.85rem; padding: 6px 12px;">
+                                🔄 รีเซ็ต
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="flex: 1; height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden;">
+                            <div id="individual-progress-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.3s ease;"></div>
+                        </div>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b; min-width: 120px; text-align: right;" id="individual-progress-text">0 / 31 วัน (0%)</div>
+                    </div>
+                </div>
+
+                <!-- Checklist Table -->
+                <div class="matrix-table-container">
+                    <table class="checklist-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 130px; text-align: center;">วันที่ &amp; เวลา</th>
+                                <th>รายละเอียดการปฏิบัติงาน</th>
+                                <th style="width: 180px; text-align: center;">สถานะการตรวจรับ</th>
+                                <th style="width: 220px;">บันทึกข้อสังเกตผู้ตรวจรับ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="individual-checklist-tbody">
+                            <!-- Injected via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Official Monthly Inspection Sign-off Card -->
+                <div class="officer-approval-box">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; border-bottom: 1px solid #cbd5e1; padding-bottom: 14px;">
+                        <div>
+                            <div style="font-size: 1.1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                                <span>✍️</span> บันทึกการตรวจรับพัสดุและรับรองผลการปฏิบัติงาน
+                            </div>
+                            <div style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">สำหรับเจ้าหน้าที่ผู้ตรวจรับพัสดุ/ผู้ควบคุมงานจ้างเหมาบริการ เพื่อใช้ประกอบการเบิกจ่ายเงินค่าจ้าง</div>
+                        </div>
+                        <div id="individual-approval-status-badge">
+                            <span class="approval-badge-pending">⏳ รอการลงนามตรวจรับ</span>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                        <div>
+                            <label class="form-label">ชื่อเจ้าหน้าที่ผู้ตรวจรับ / ผู้ควบคุมงาน</label>
+                            <input type="text" id="inspector-name-input" class="form-input" placeholder="เช่น นางสาวแก้วมณี น้อยแดง">
+                        </div>
+                        <div>
+                            <label class="form-label">ตำแหน่ง</label>
+                            <input type="text" id="inspector-position-input" class="form-input" value="นักวิชาการพาณิชย์ปฏิบัติการ" placeholder="เช่น นักวิชาการพาณิชย์ชำนาญการ">
+                        </div>
+                        <div>
+                            <label class="form-label">วันที่ตรวจรับ</label>
+                            <input type="date" id="inspector-date-input" class="form-input">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 18px;">
+                        <label class="form-label">ความเห็น / ข้อสังเกตของผู้ตรวจรับ (ถ้ามี)</label>
+                        <input type="text" id="inspector-comment-input" class="form-input" placeholder="เช่น ผลการปฏิบัติงานถูกต้องครบถ้วนตามสัญญาจ้าง เห็นควรเบิกจ่ายเงินค่าจ้างได้">
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" class="btn-submit" onclick="saveMonthlyApproval(1)" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;">
+                            <span>💾</span>
+                            <span>อนุมัติและลงนามตรวจรับ</span>
+                        </button>
+                        <button type="button" class="btn-submit" onclick="printDriverInspectionCertificate()" style="background: linear-gradient(135deg, #059669, #047857); display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px;">
+                            <span>🖨️</span>
+                            <span>พิมพ์ใบรับรองผลการตรวจรับ</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
 
         </div>
 

@@ -1250,9 +1250,250 @@ def reset_driver_monthly_report(req: DriverReportResetReq):
             WHERE driver_id = ? AND report_month = ?
         """, (req.driver_id, req.report_month))
         
+# ----------------- Moderator Driver Verification Checklist & Approvals -----------------
+
+@app.get("/api/moderator/driver-verification")
+def get_moderator_driver_verification(month: str = ""):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    # Parse month
+    try:
+        parts = month.split("-")
+        y, m = int(parts[0]), int(parts[1])
+    except Exception:
+        now = datetime.now()
+        y, m = now.year, now.month
+        month = f"{y:04d}-{m:02d}"
+        
+    num_days = calendar.monthrange(y, m)[1]
+    buddhist_year = y + 543
+    thai_month_str = f"{THAI_MONTH_NAMES[m]} {buddhist_year}"
+    
+    # 1. Fetch all 4 drivers
+    cursor.execute("SELECT * FROM drivers WHERE is_active = 1 ORDER BY id ASC")
+    drivers_rows = cursor.fetchall()
+    drivers_list = []
+    
+    # 2. Fetch driver monthly reports for each driver for this month
+    driver_reports = {}
+    for d in drivers_rows:
+        d_dict = dict(d)
+        d_id = d_dict["id"]
+        
+        # Vehicle info
+        cursor.execute("SELECT license_plate FROM vehicles WHERE primary_driver_id = ?", (d_id,))
+        v_row = cursor.fetchone()
+        plate = v_row["license_plate"] if v_row else "รถประจำสำนักงาน"
+        d_dict["license_plate"] = plate
+        
+        # Monthly Approval status
+        cursor.execute("SELECT * FROM driver_monthly_approvals WHERE driver_id = ? AND report_month = ?", (d_id, month))
+        appr_row = cursor.fetchone()
+        approval_info = dict(appr_row) if appr_row else {
+            "is_approved": 0,
+            "inspector_name": "",
+            "inspector_position": "เจ้าหน้าที่ผู้ตรวจรับพัสดุ",
+            "approval_date": "",
+            "officer_comment": ""
+        }
+        d_dict["approval"] = approval_info
+        
+        # Verification logs for this driver
+        cursor.execute("SELECT day_num, is_verified, officer_notes, verified_by, verified_at FROM driver_verification_logs WHERE driver_id = ? AND report_month = ?", (d_id, month))
+        verif_map = {r["day_num"]: dict(r) for r in cursor.fetchall()}
+        
+        # Get driver monthly report data using helper
+        rep = get_driver_monthly_report(d_id, month)
+        
+        # Calculate stats
+        verified_count = 0
+        total_workdays = 0
+        days_augmented = []
+        for day_obj in rep["days"]:
+            d_num = day_obj["day_num"]
+            is_weekend = day_obj["is_weekend"]
+            if not is_weekend:
+                total_workdays += 1
+            
+            v_log = verif_map.get(d_num, {})
+            is_ver = v_log.get("is_verified", 0)
+            if is_ver:
+                verified_count += 1
+                
+            day_augmented = dict(day_obj)
+            day_augmented["is_verified"] = is_ver
+            day_augmented["officer_notes"] = v_log.get("officer_notes", "")
+            day_augmented["verified_by"] = v_log.get("verified_by", "")
+            day_augmented["verified_at"] = v_log.get("verified_at", "")
+            days_augmented.append(day_augmented)
+            
+        d_dict["verified_count"] = verified_count
+        d_dict["total_workdays"] = total_workdays
+        d_dict["total_days"] = num_days
+        d_dict["is_all_verified"] = (verified_count >= num_days)
+        drivers_list.append(d_dict)
+        driver_reports[d_id] = days_augmented
+
+    # 3. Construct Matrix Days (1 to num_days)
+    matrix_days = []
+    for day in range(1, num_days + 1):
+        dt = datetime(y, m, day)
+        weekday = dt.weekday()
+        is_weekend = (weekday in [5, 6])
+        
+        day_drivers_data = {}
+        day_all_verified = True
+        
+        for d in drivers_list:
+            d_id = d["id"]
+            d_day_data = driver_reports[d_id][day - 1]
+            day_drivers_data[d_id] = d_day_data
+            if not d_day_data.get("is_verified"):
+                day_all_verified = False
+                
+        matrix_days.append({
+            "day_num": day,
+            "date_str": f"{y:04d}-{m:02d}-{day:02d}",
+            "thai_date_str": f"{day} {THAI_MONTH_NAMES[m]} {buddhist_year}",
+            "weekday_name": THAI_DAY_NAMES[weekday],
+            "is_weekend": is_weekend,
+            "all_verified": day_all_verified,
+            "drivers": day_drivers_data
+        })
+        
+    conn.close()
+    
+    return {
+        "month": month,
+        "month_thai": thai_month_str,
+        "num_days": num_days,
+        "drivers": drivers_list,
+        "matrix_days": matrix_days,
+        "driver_reports": driver_reports
+    }
+
+class VerificationToggleReq(BaseModel):
+    driver_id: int
+    report_month: str
+    day_num: int
+    is_verified: Optional[int] = None
+    officer_notes: Optional[str] = None
+    verified_by: Optional[str] = "เจ้าหน้าที่ผู้ตรวจรับ"
+
+@app.post("/api/moderator/driver-verification/toggle")
+def toggle_driver_verification(req: VerificationToggleReq):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    now_str = datetime.now().isoformat()
+    
+    if req.is_verified is None:
+        cursor.execute("SELECT is_verified FROM driver_verification_logs WHERE driver_id = ? AND report_month = ? AND day_num = ?", (req.driver_id, req.report_month, req.day_num))
+        row = cursor.fetchone()
+        new_val = 0 if (row and row["is_verified"]) else 1
+    else:
+        new_val = req.is_verified
+        
+    notes = req.officer_notes if req.officer_notes is not None else ""
+    
+    cursor.execute("""
+        INSERT INTO driver_verification_logs (driver_id, report_month, day_num, is_verified, officer_notes, verified_by, verified_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(driver_id, report_month, day_num)
+        DO UPDATE SET is_verified = excluded.is_verified, 
+                      officer_notes = COALESCE(NULLIF(excluded.officer_notes, ''), driver_verification_logs.officer_notes),
+                      verified_by = excluded.verified_by,
+                      verified_at = excluded.verified_at
+    """, (req.driver_id, req.report_month, req.day_num, new_val, notes, req.verified_by, now_str))
+    
     conn.commit()
     conn.close()
-    return {"success": True, "message": "คืนค่าเริ่มต้นจากระบบบันทึกการเดินทางเรียบร้อยแล้ว"}
+    return {"success": True, "is_verified": new_val, "day_num": req.day_num, "driver_id": req.driver_id}
+
+class VerificationBulkReq(BaseModel):
+    report_month: str
+    driver_id: Optional[int] = None # None = all drivers
+    day_num: Optional[int] = None # None = all days in month
+    action: str = "verify_all" # "verify_all" or "unverify_all"
+    verified_by: Optional[str] = "เจ้าหน้าที่ผู้ตรวจรับ"
+
+@app.post("/api/moderator/driver-verification/bulk")
+def bulk_driver_verification(req: VerificationBulkReq):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    now_str = datetime.now().isoformat()
+    new_val = 1 if req.action == "verify_all" else 0
+    
+    # Target drivers
+    if req.driver_id is not None:
+        target_driver_ids = [req.driver_id]
+    else:
+        cursor.execute("SELECT id FROM drivers WHERE is_active = 1")
+        target_driver_ids = [r["id"] for r in cursor.fetchall()]
+        
+    # Target days
+    if req.day_num is not None:
+        target_days = [req.day_num]
+    else:
+        try:
+            parts = req.report_month.split("-")
+            y, m = int(parts[0]), int(parts[1])
+            num_days = calendar.monthrange(y, m)[1]
+        except Exception:
+            num_days = 31
+        target_days = list(range(1, num_days + 1))
+        
+    for did in target_driver_ids:
+        for d in target_days:
+            cursor.execute("""
+                INSERT INTO driver_verification_logs (driver_id, report_month, day_num, is_verified, verified_by, verified_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(driver_id, report_month, day_num)
+                DO UPDATE SET is_verified = excluded.is_verified,
+                              verified_by = excluded.verified_by,
+                              verified_at = excluded.verified_at
+            """, (did, req.report_month, d, new_val, req.verified_by, now_str))
+            
+    conn.commit()
+    conn.close()
+    return {"success": True, "action": req.action, "total_updated": len(target_driver_ids) * len(target_days)}
+
+class DriverMonthlyApprovalReq(BaseModel):
+    driver_id: int
+    report_month: str
+    is_approved: int = 1
+    inspector_name: str
+    inspector_position: str = "เจ้าหน้าที่ผู้ตรวจรับพัสดุ"
+    approval_date: Optional[str] = None
+    officer_comment: Optional[str] = ""
+
+@app.post("/api/moderator/driver-verification/approve")
+def approve_driver_monthly_report(req: DriverMonthlyApprovalReq):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    now_str = datetime.now().isoformat()
+    appr_date = req.approval_date or datetime.now().strftime("%Y-%m-%d")
+    
+    cursor.execute("""
+        INSERT INTO driver_monthly_approvals (driver_id, report_month, is_approved, inspector_name, inspector_position, approval_date, officer_comment, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(driver_id, report_month)
+        DO UPDATE SET is_approved = excluded.is_approved,
+                      inspector_name = excluded.inspector_name,
+                      inspector_position = excluded.inspector_position,
+                      approval_date = excluded.approval_date,
+                      officer_comment = excluded.officer_comment,
+                      updated_at = excluded.updated_at
+    """, (req.driver_id, req.report_month, req.is_approved, req.inspector_name.strip(), req.inspector_position.strip(), appr_date, req.officer_comment or "", now_str))
+    
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "ลงนามอนุมัติและรับรองผลการปฏิบัติงานเรียบร้อยแล้ว"}
+
+
 
 # Mount static frontend files
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

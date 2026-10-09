@@ -2025,6 +2025,9 @@ async function loadModeratorData() {
         // 4. Render Trips Cross-Check Table
         filterModeratorTrips();
 
+        // 5. Also refresh verification matrix & checklist if loaded
+        await loadModeratorVerificationData();
+
     } catch (e) {
         console.error("Error loading moderator data:", e);
     }
@@ -2961,5 +2964,448 @@ function printDriverPerformanceReport() {
         document.body.className = "";
     }, 1000);
 }
+
+// =========================================================
+// MODERATOR DRIVER VERIFICATION & CHECKLIST ENGINE
+// =========================================================
+
+let currentVerificationData = null;
+let currentSelectedModDriverId = 1;
+let currentModSubTab = "overview";
+
+function switchModeratorSubTab(subTabName) {
+    currentModSubTab = subTabName;
+    
+    // Update subnav buttons
+    const btns = document.querySelectorAll(".mod-subnav-btn");
+    btns.forEach(btn => btn.classList.remove("active"));
+    
+    const activeBtn = document.getElementById(`btn-mod-subnav-${subTabName}`);
+    if (activeBtn) activeBtn.classList.add("active");
+    
+    // Toggle subviews
+    document.getElementById("mod-subview-overview").style.display = (subTabName === "overview") ? "block" : "none";
+    document.getElementById("mod-subview-matrix").style.display = (subTabName === "matrix") ? "block" : "none";
+    document.getElementById("mod-subview-individual").style.display = (subTabName === "individual") ? "block" : "none";
+    
+    if (subTabName === "matrix" || subTabName === "individual") {
+        loadModeratorVerificationData();
+    }
+}
+
+async function loadModeratorVerificationData() {
+    const monthInput = document.getElementById("moderator-month");
+    let monthStr = monthInput ? monthInput.value : "";
+    if (!monthStr) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    try {
+        const res = await fetch(`/api/moderator/driver-verification?month=${monthStr}`);
+        if (!res.ok) throw new Error("ไม่สามารถโหลดข้อมูลการตรวจรับได้");
+        
+        const data = await res.json();
+        currentVerificationData = data;
+        
+        // Update Matrix Month Label
+        const monthLabel = document.getElementById("matrix-month-label");
+        if (monthLabel) monthLabel.textContent = data.month_thai;
+        
+        // Update Metrics
+        let totalItems = data.num_days * data.drivers.length;
+        let verifiedItems = 0;
+        data.drivers.forEach(d => {
+            verifiedItems += (d.verified_count || 0);
+        });
+        
+        const mDays = document.getElementById("matrix-metric-total-days");
+        const mVer = document.getElementById("matrix-metric-verified-count");
+        const mPend = document.getElementById("matrix-metric-pending-count");
+        
+        if (mDays) mDays.textContent = `${data.num_days} วัน`;
+        if (mVer) mVer.textContent = `${verifiedItems} / ${totalItems} (${Math.round((verifiedItems / (totalItems || 1)) * 100)}%)`;
+        if (mPend) mPend.textContent = `${Math.max(0, totalItems - verifiedItems)} รายการ`;
+        
+        // Render Views
+        renderModeratorMatrix(data);
+        renderModeratorIndividualChecklist(data);
+    } catch (e) {
+        console.error("Error loading verification data:", e);
+    }
+}
+
+function renderModeratorMatrix(data) {
+    if (!data || !data.matrix_days) return;
+    const tbody = document.getElementById("matrix-overview-tbody");
+    if (!tbody) return;
+    
+    tbody.innerHTML = data.matrix_days.map(d => {
+        const rowWeekendClass = d.is_weekend ? "matrix-row-weekend" : "";
+        
+        // Render 4 Driver cells
+        const driverCellsHtml = data.drivers.map(drv => {
+            const drvDay = d.drivers[drv.id] || {};
+            const isVer = drvDay.is_verified ? true : false;
+            const tripsCount = drvDay.trips_count || 0;
+            
+            let pillClass = "weekend";
+            let pillIcon = "🏖️";
+            let pillText = "วันหยุดราชการ";
+            
+            if (!d.is_weekend) {
+                if (tripsCount > 0) {
+                    pillClass = "trip";
+                    pillIcon = "🚗";
+                    pillText = `ออกรถ ${tripsCount} เที่ยว`;
+                } else {
+                    pillClass = "office";
+                    pillIcon = "🏢";
+                    pillText = "ปฏิบัติงานใน สนง.";
+                }
+            }
+            
+            const checkedClass = isVer ? "checked" : "";
+            const checkedLabel = isVer ? "✅ ตรวจแล้ว" : "☑️ ตรวจ";
+            
+            return `
+                <td>
+                    <div class="matrix-cell-pill ${pillClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+                            <span style="font-weight: 700; font-size: 0.82rem;">${pillIcon} ${pillText}</span>
+                            <button type="button" class="matrix-check-btn ${checkedClass}" onclick="toggleDayVerification(${drv.id}, ${d.day_num})" title="คลิกเพื่อสลับสถานะตรวจรับ">
+                                ${checkedLabel}
+                            </button>
+                        </div>
+                        <div style="font-size: 0.75rem; opacity: 0.88; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                            ${escapeHtml(drvDay.work_detail || '')}
+                        </div>
+                    </div>
+                </td>
+            `;
+        }).join('');
+        
+        const allVerHtml = d.all_verified 
+            ? `<span style="background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.78rem;">✅ ครบ</span>`
+            : `<span style="background: #f1f5f9; color: #94a3b8; padding: 4px 8px; border-radius: 12px; font-size: 0.78rem;">⏳ รอตรวจ</span>`;
+            
+        return `
+            <tr class="${rowWeekendClass}">
+                <td style="text-align: center; vertical-align: middle;">
+                    <div style="font-size: 1.15rem; font-weight: 800; color: ${d.is_weekend ? '#64748b' : '#0f172a'};">${d.day_num}</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: ${d.is_weekend ? '#94a3b8' : '#475569'};">วัน${d.weekday_name}</div>
+                </td>
+                ${driverCellsHtml}
+                <td style="text-align: center; vertical-align: middle;">
+                    ${allVerHtml}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderModeratorIndividualChecklist(data) {
+    if (!data || !data.drivers) return;
+    
+    // 1. Render Driver Selector Cards
+    const selectorContainer = document.getElementById("individual-driver-selector");
+    if (selectorContainer) {
+        selectorContainer.innerHTML = data.drivers.map(drv => {
+            const activeClass = (drv.id === currentSelectedModDriverId) ? "active" : "";
+            const isAppr = drv.approval && drv.approval.is_approved;
+            const badgeHtml = isAppr 
+                ? `<span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 10px;">✅ อนุมัติแล้ว</span>`
+                : `<span style="background: #f1f5f9; color: #64748b; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 10px;">ตรวจ ${drv.verified_count || 0}/${data.num_days} วัน</span>`;
+                
+            return `
+                <div class="driver-select-card ${activeClass}" onclick="selectIndividualModDriver(${drv.id})">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: ${drv.avatar_color || '#2563eb'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; flex-shrink: 0;">
+                        ${(drv.name || 'พ').slice(0, 1)}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 700; color: #0f172a; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${drv.name}</div>
+                        <div style="font-size: 0.78rem; color: #64748b; margin-top: 1px;">${drv.license_plate}</div>
+                        <div style="margin-top: 4px;">${badgeHtml}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // 2. Render Current Selected Driver Details
+    const currentDrv = data.drivers.find(d => d.id === currentSelectedModDriverId) || data.drivers[0];
+    if (!currentDrv) return;
+    
+    const titleElem = document.getElementById("individual-driver-title");
+    const subElem = document.getElementById("individual-driver-subtitle");
+    if (titleElem) titleElem.textContent = currentDrv.name;
+    if (subElem) subElem.textContent = `รถประจำสำนักงาน หมายเลขทะเบียน ${currentDrv.license_plate} | ประจำเดือน ${data.month_thai}`;
+    
+    // Progress
+    const verCount = currentDrv.verified_count || 0;
+    const totalDays = data.num_days || 31;
+    const pct = Math.round((verCount / (totalDays || 1)) * 100);
+    
+    const pBar = document.getElementById("individual-progress-bar");
+    const pText = document.getElementById("individual-progress-text");
+    if (pBar) pBar.style.width = `${pct}%`;
+    if (pText) pText.textContent = `${verCount} / ${totalDays} วัน (${pct}%)`;
+    
+    // 3. Render Checklist Rows
+    const drvDays = data.driver_reports ? (data.driver_reports[currentDrv.id] || []) : [];
+    const tbody = document.getElementById("individual-checklist-tbody");
+    if (tbody) {
+        tbody.innerHTML = drvDays.map(d => {
+            const isVer = d.is_verified ? true : false;
+            const rowWeekendClass = d.is_weekend ? "matrix-row-weekend" : "";
+            
+            let dateHtml = '';
+            if (d.is_weekend) {
+                dateHtml = `
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #64748b;">${d.day_num}</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #94a3b8;">(${d.weekday_name})</div>
+                `;
+            } else {
+                dateHtml = `
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 2px;">${d.day_num}</div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #475569;">(${d.weekday_name})</div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">08.30-16.30</div>
+                `;
+            }
+            
+            const statusBtn = isVer 
+                ? `<button type="button" class="btn-submit" onclick="toggleDayVerification(${currentDrv.id}, ${d.day_num})" style="background: #10b981; padding: 5px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px; box-shadow: none;">
+                       ✅ ตรวจสอบแล้ว
+                   </button>`
+                : `<button type="button" class="btn-cancel" onclick="toggleDayVerification(${currentDrv.id}, ${d.day_num})" style="padding: 5px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                       ⏳ คลิกเพื่อตรวจรับ
+                   </button>`;
+                   
+            return `
+                <tr class="${rowWeekendClass}">
+                    <td style="text-align: center; vertical-align: top; padding: 10px 4px;">
+                        ${dateHtml}
+                    </td>
+                    <td style="vertical-align: top;">
+                        <div style="font-size: 0.9rem; line-height: 1.5; color: #1e293b; white-space: pre-line;">${escapeHtml(d.work_detail || '')}</div>
+                    </td>
+                    <td style="text-align: center; vertical-align: top;">
+                        ${statusBtn}
+                    </td>
+                    <td style="vertical-align: top;">
+                        <input type="text" class="form-input" style="font-size: 0.82rem; padding: 5px 8px; width: 100%;" 
+                               value="${escapeHtml(d.officer_notes || '')}" 
+                               placeholder="บันทึกข้อสังเกต..." 
+                               onchange="saveDayOfficerNote(${currentDrv.id}, ${d.day_num}, this.value)">
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // 4. Fill Approval Form
+    const appr = currentDrv.approval || {};
+    const inspectorNameInput = document.getElementById("inspector-name-input");
+    const inspectorPosInput = document.getElementById("inspector-position-input");
+    const inspectorDateInput = document.getElementById("inspector-date-input");
+    const inspectorCommentInput = document.getElementById("inspector-comment-input");
+    const apprBadge = document.getElementById("individual-approval-status-badge");
+    
+    if (inspectorNameInput) inspectorNameInput.value = appr.inspector_name || "";
+    if (inspectorPosInput) inspectorPosInput.value = appr.inspector_position || "นักวิชาการพาณิชย์ปฏิบัติการ";
+    if (inspectorDateInput) inspectorDateInput.value = appr.approval_date || getTodayInputFormat();
+    if (inspectorCommentInput) inspectorCommentInput.value = appr.officer_comment || "";
+    
+    if (apprBadge) {
+        if (appr.is_approved) {
+            apprBadge.innerHTML = `<span class="approval-badge-approved">✅ ได้รับการอนุมัติและลงนามเรียบร้อยแล้ว</span>`;
+        } else {
+            apprBadge.innerHTML = `<span class="approval-badge-pending">⏳ รอการลงนามตรวจรับ</span>`;
+        }
+    }
+}
+
+function selectIndividualModDriver(driverId) {
+    currentSelectedModDriverId = driverId;
+    if (currentVerificationData) {
+        renderModeratorIndividualChecklist(currentVerificationData);
+    }
+}
+
+async function toggleDayVerification(driverId, dayNum) {
+    const monthInput = document.getElementById("moderator-month");
+    let monthStr = monthInput ? monthInput.value : "";
+    if (!monthStr) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    try {
+        const res = await fetch("/api/moderator/driver-verification/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: monthStr,
+                day_num: dayNum
+            })
+        });
+        
+        if (res.ok) {
+            await loadModeratorVerificationData();
+        }
+    } catch (e) {
+        console.error("Toggle verification error:", e);
+    }
+}
+
+async function saveDayOfficerNote(driverId, dayNum, note) {
+    const monthInput = document.getElementById("moderator-month");
+    let monthStr = monthInput ? monthInput.value : "";
+    if (!monthStr) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    try {
+        await fetch("/api/moderator/driver-verification/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: monthStr,
+                day_num: dayNum,
+                officer_notes: note
+            })
+        });
+    } catch (e) {
+        console.error("Save note error:", e);
+    }
+}
+
+async function bulkVerifyAllDrivers(action) {
+    const monthInput = document.getElementById("moderator-month");
+    let monthStr = monthInput ? monthInput.value : "";
+    if (!monthStr) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    try {
+        const res = await fetch("/api/moderator/driver-verification/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                report_month: monthStr,
+                action: action
+            })
+        });
+        
+        if (res.ok) {
+            await loadModeratorVerificationData();
+        }
+    } catch (e) {
+        console.error("Bulk verify error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+async function bulkVerifyCurrentDriver(action) {
+    const monthInput = document.getElementById("moderator-month");
+    let monthStr = monthInput ? monthInput.value : "";
+    if (!monthStr) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    try {
+        const res = await fetch("/api/moderator/driver-verification/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: currentSelectedModDriverId,
+                report_month: monthStr,
+                action: action
+            })
+        });
+        
+        if (res.ok) {
+            await loadModeratorVerificationData();
+        }
+    } catch (e) {
+        console.error("Bulk verify current driver error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+async function saveMonthlyApproval(isApproved) {
+    const monthInput = document.getElementById("moderator-month");
+    let monthStr = monthInput ? monthInput.value : "";
+    if (!monthStr) {
+        const now = new Date();
+        monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    
+    const inspectorName = document.getElementById("inspector-name-input")?.value || "";
+    const inspectorPos = document.getElementById("inspector-position-input")?.value || "นักวิชาการพาณิชย์ปฏิบัติการ";
+    const inspectorDate = document.getElementById("inspector-date-input")?.value || getTodayInputFormat();
+    const inspectorComment = document.getElementById("inspector-comment-input")?.value || "";
+    
+    if (!inspectorName.trim()) {
+        alert("⚠️ กรุณาระบุชื่อเจ้าหน้าที่ผู้ตรวจรับพัสดุ");
+        document.getElementById("inspector-name-input")?.focus();
+        return;
+    }
+    
+    try {
+        const res = await fetch("/api/moderator/driver-verification/approve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: currentSelectedModDriverId,
+                report_month: monthStr,
+                is_approved: isApproved,
+                inspector_name: inspectorName,
+                inspector_position: inspectorPos,
+                approval_date: inspectorDate,
+                officer_comment: inspectorComment
+            })
+        });
+        
+        const data = await res.json();
+        if (res.ok && data.success) {
+            alert("✅ " + data.message);
+            await loadModeratorVerificationData();
+        } else {
+            alert("❌ " + (data.detail || "บันทึกไม่สำเร็จ"));
+        }
+    } catch (e) {
+        console.error("Save approval error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+function printDriverInspectionCertificate() {
+    if (!currentVerificationData) {
+        alert("⚠️ กรุณารอโหลดข้อมูลการตรวจรับให้เสร็จก่อน");
+        return;
+    }
+    
+    // Switch to driver report view for this driver and trigger print
+    const drv = currentVerificationData.drivers.find(d => d.id === currentSelectedModDriverId);
+    if (!drv) return;
+    
+    // Switch tab and load this driver's report
+    switchTab('driver-report');
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    if (driverSelect) {
+        driverSelect.value = currentSelectedModDriverId;
+    }
+    loadDriverPerformanceReport();
+    setTimeout(() => {
+        printDriverPerformanceReport();
+    }, 600);
+}
+
 
 

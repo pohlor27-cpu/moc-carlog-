@@ -136,6 +136,40 @@ def init_db():
         )
     """)
 
+    # Moderator Daily Verification Checklist (การตรวจรับผลงาน พขร. รายวันของเจ้าหน้าที่)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS driver_verification_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            driver_id INTEGER NOT NULL,
+            report_month TEXT NOT NULL, -- '2026-10'
+            day_num INTEGER NOT NULL, -- 1 to 31
+            is_verified INTEGER DEFAULT 0, -- 1 = ตรวจสอบแล้ว, 0 = ยังไม่ตรวจ
+            officer_notes TEXT, -- บันทึกข้อสังเกตของผู้ตรวจรับ
+            verified_by TEXT,
+            verified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(driver_id, report_month, day_num),
+            FOREIGN KEY (driver_id) REFERENCES drivers(id)
+        )
+    """)
+
+    # Moderator Monthly Approval Sign-off (การลงนามอนุมัติรับรองผลงานทั้งเดือน)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS driver_monthly_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            driver_id INTEGER NOT NULL,
+            report_month TEXT NOT NULL, -- '2026-10'
+            is_approved INTEGER DEFAULT 0, -- 1 = อนุมัติแล้ว
+            inspector_name TEXT, -- ชื่อเจ้าหน้าที่ผู้ตรวจรับ
+            inspector_position TEXT, -- ตำแหน่ง
+            approval_date TEXT,
+            officer_comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(driver_id, report_month),
+            FOREIGN KEY (driver_id) REFERENCES drivers(id)
+        )
+    """)
+
 
     # Pre-seed 4 official drivers
     cursor.execute("SELECT COUNT(*) FROM drivers")
