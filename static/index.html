@@ -1322,6 +1322,49 @@
         </div>
     </div>
 
+    <!-- MODAL: EDIT SINGLE DAY DRIVER REPORT -->
+    <div class="modal-overlay" id="modal-edit-driver-day">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-header">
+                <div class="modal-title" id="edit-driver-day-modal-title">✏️ แก้ไขผลการปฏิบัติงานประจำวัน</div>
+                <button type="button" class="modal-close" onclick="closeDayEditModal()">✕</button>
+            </div>
+            <form id="form-edit-driver-day" onsubmit="submitDayEditModal(event)">
+                <input type="hidden" id="edit-driver-day-num">
+                
+                <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9rem; color: #334155; display: flex; justify-content: space-between; align-items: center;">
+                    <div><span id="edit-driver-day-label" style="font-weight: 700;">วันที่ 1 ตุลาคม 2569</span></div>
+                    <div id="edit-driver-day-trip-info" style="font-size: 0.82rem; color: #0284c7; font-weight: 600;">🚗 มีบันทึกเดินทาง</div>
+                </div>
+
+                <!-- Quick Preset Chips -->
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label class="form-label" style="font-size: 0.85rem; margin-bottom: 6px;">⚡ แตะเพื่อใส่ข้อความด่วน / เพิ่มเติม:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <button type="button" class="chip-btn" onclick="appendDayPreset('เวลา 08.30 - 12.00 น. ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ ประจำสำนักงาน')">🧼 เช็ค/ล้างรถช่วงเช้า</button>
+                        <button type="button" class="chip-btn" onclick="appendDayPreset('เวลา 13.00 - 16.30 น. ปฏิบัติงานประจำสำนักงาน และเตรียมความพร้อมยานพาหนะ')">🏢 ปฏิบัติงาน สนง. ช่วงบ่าย</button>
+                        <button type="button" class="chip-btn" onclick="appendDayPreset('นำรถยนต์เข้าศูนย์บริการเพื่อตรวจเช็คระยะและเปลี่ยนถ่ายน้ำมันเครื่อง')">🔧 นำรถเข้าศูนย์บริการ</button>
+                        <button type="button" class="chip-btn" onclick="appendDayPreset('ไปรษณีย์จังหวัดเพชรบุรี และส่งหนังสือราชการตามหน่วยงาน')">📦 ไปรษณีย์/ส่งเอกสาร</button>
+                        <button type="button" class="chip-btn" onclick="setDayPreset('วันหยุดราชการ')">🏖️ วันหยุดราชการ</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">รายละเอียดงานที่ปฏิบัติ (แก้ไขหรือพิมพ์เพิ่มเติมได้อิสระ)</label>
+                    <textarea id="edit-driver-day-textarea" class="form-input" rows="5" style="width: 100%; font-size: 0.95rem; line-height: 1.5; font-family: inherit; padding: 10px 12px;" placeholder="พิมพ์รายละเอียดงาน..."></textarea>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <button type="button" class="btn-cancel" onclick="quickResetFromModal()">🔄 คืนค่าจากเที่ยวรถ</button>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-cancel" onclick="closeDayEditModal()">ยกเลิก</button>
+                        <button type="submit" class="btn-submit" style="background: #2563eb;">💾 บันทึกวันนี้</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ------------------------------------------------------------- -->
     <!-- 5. TEMPLATE เอกสารราชการ: บันทึกการใช้รถราชการ (แบบ 4) สำหรับสั่งพิมพ์ -->
     <!-- ------------------------------------------------------------- -->

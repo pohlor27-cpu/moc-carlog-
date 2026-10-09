@@ -2602,20 +2602,52 @@ function renderDriverPerformanceReport(data) {
     
     tbody.innerHTML = data.days.map(d => {
         const rowBg = d.is_weekend ? 'class="row-weekend"' : '';
-        const dayDisplay = `${d.day_num}`;
         const editBadge = d.is_manual_edit ? `<span class="report-badge-edit">✏️ บันทึกแก้ไขแล้ว</span>` : '';
+        
+        // Date & Time slots formatting
+        let dateCellHtml = '';
+        if (d.is_weekend) {
+            dateCellHtml = `
+                <div style="font-size: 1.25rem; font-weight: 800; color: #64748b;">${d.day_num}</div>
+                <div style="font-size: 0.78rem; font-weight: 600; color: #94a3b8; margin-top: 2px;">(${d.weekday_name})</div>
+            `;
+        } else {
+            dateCellHtml = `
+                <div style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 3px;">${d.day_num}</div>
+                <div style="font-size: 0.8rem; font-weight: 600; color: #475569; line-height: 1.3; white-space: nowrap;">08.30 - 12.00</div>
+                <div style="font-size: 0.8rem; font-weight: 600; color: #475569; line-height: 1.3; white-space: nowrap;">13.00 - 16.30</div>
+            `;
+        }
+        
+        const lineCount = (d.work_detail || '').split('\n').length;
+        const rowHeight = Math.max(2, Math.min(6, lineCount));
         
         return `
             <tr ${rowBg} data-day="${d.day_num}">
-                <td style="text-align: center; font-weight: 700; vertical-align: top; padding-top: 10px; border: 1.5px solid #000; font-size: 1.05rem;">
-                    ${dayDisplay}
+                <td style="text-align: center; vertical-align: top; padding: 10px 4px; border: 1.5px solid #000; font-family: inherit;">
+                    ${dateCellHtml}
                 </td>
-                <td style="border: 1.5px solid #000; padding: 6px 10px;">
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <textarea class="driver-report-cell-edit" data-day="${d.day_num}" rows="2" placeholder="พิมพ์รายละเอียดงานที่ปฏิบัติ...">${escapeHtml(d.work_detail || '')}</textarea>
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; color: #64748b; padding: 0 4px;">
-                            <span>วัน${d.weekday_name} (${d.trips_count > 0 ? `🚗 เดินทาง ${d.trips_count} เที่ยว` : 'ไม่มีบันทึกออกรถ'})${editBadge}</span>
-                            <button type="button" onclick="quickResetSingleDay(${d.day_num})" style="background: none; border: none; color: #64748b; font-size: 0.8rem; cursor: pointer; text-decoration: underline;" title="ดึงข้อความอัตโนมัติเฉพาะวันนี้ใหม่">🔄 คืนค่าอัตโนมัติ</button>
+                <td style="border: 1.5px solid #000; padding: 8px 12px; vertical-align: top;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <textarea class="driver-report-cell-edit" id="report-text-${d.day_num}" data-day="${d.day_num}" rows="${rowHeight}" placeholder="พิมพ์รายละเอียดงานที่ปฏิบัติ...">${escapeHtml(d.work_detail || '')}</textarea>
+                        
+                        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem; color: #64748b; background: #f8fafc; padding: 5px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-weight: 600; color: #334155;">วัน${d.weekday_name}</span>
+                                <span>(${d.trips_count > 0 ? `🚗 เดินทาง ${d.trips_count} เที่ยว` : 'ไม่มีบันทึกออกรถ'})</span>
+                                ${editBadge}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <button type="button" onclick="openDayEditModal(${d.day_num})" class="chip-btn" style="background: #e0f2fe; border-color: #7dd3fc; color: #0284c7; padding: 3px 9px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="เปิดหน้าต่างแก้ไขและใส่ข้อความด่วน">
+                                    ✏️ แก้ไข / เติมข้อความ
+                                </button>
+                                <button type="button" onclick="saveSingleDay(${d.day_num})" class="chip-btn" style="background: #dcfce7; border-color: #86efac; color: #15803d; padding: 3px 9px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;" title="บันทึกเฉพาะวันนี้">
+                                    💾 เซฟวันนี้
+                                </button>
+                                <button type="button" onclick="quickResetSingleDay(${d.day_num})" style="background: none; border: none; color: #64748b; font-size: 0.78rem; cursor: pointer; text-decoration: underline; padding: 2px 4px;" title="ดึงข้อความอัตโนมัติจากเที่ยวรถใหม่">
+                                    🔄 คืนค่าจากเที่ยวรถ
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </td>
@@ -2642,12 +2674,161 @@ function renderPrintDriverReport(data) {
     if (printSigDriver) printSigDriver.textContent = data.contractor_name;
     
     if (printTbody) {
-        printTbody.innerHTML = data.days.map(d => `
-            <tr>
-                <td style="text-align: center; font-weight: bold; border: 1.2pt solid #000; vertical-align: top; padding-top: 6px;">${d.day_num}</td>
-                <td style="border: 1.2pt solid #000; padding: 5px 8px; line-height: 1.45;">${escapeHtml(d.work_detail || '')}</td>
-            </tr>
-        `).join('');
+        printTbody.innerHTML = data.days.map(d => {
+            let printDateHtml = '';
+            if (d.is_weekend) {
+                printDateHtml = `<div style="font-size: 11pt; font-weight: bold;">${d.day_num}</div>`;
+            } else {
+                printDateHtml = `
+                    <div style="font-size: 11pt; font-weight: bold; margin-bottom: 1px;">${d.day_num}</div>
+                    <div style="font-size: 8pt; font-weight: normal; line-height: 1.2; white-space: nowrap;">08.30 - 12.00</div>
+                    <div style="font-size: 8pt; font-weight: normal; line-height: 1.2; white-space: nowrap;">13.00 - 16.30</div>
+                `;
+            }
+            
+            return `
+                <tr>
+                    <td style="text-align: center; border: 1.2pt solid #000; vertical-align: top; padding: 5px 2px; line-height: 1.25;">${printDateHtml}</td>
+                    <td style="border: 1.2pt solid #000; padding: 5px 8px; line-height: 1.45; vertical-align: top;">${escapeHtml(d.work_detail || '')}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+}
+
+// ----------------- Single Day Edit Modal Handlers -----------------
+
+function openDayEditModal(dayNum) {
+    if (!currentReportData || !currentReportData.days) return;
+    const dayData = currentReportData.days.find(d => d.day_num === dayNum);
+    if (!dayData) return;
+    
+    document.getElementById("edit-driver-day-num").value = dayNum;
+    
+    const titleElem = document.getElementById("edit-driver-day-modal-title");
+    if (titleElem) titleElem.innerText = `✏️ แก้ไขผลการปฏิบัติงาน วันที่ ${dayNum}`;
+    
+    const labelElem = document.getElementById("edit-driver-day-label");
+    if (labelElem) labelElem.innerText = `วัน${dayData.weekday_name}ที่ ${dayData.thai_date_str}`;
+    
+    const tripInfoElem = document.getElementById("edit-driver-day-trip-info");
+    if (tripInfoElem) {
+        if (dayData.trips_count > 0) {
+            tripInfoElem.innerHTML = `🚗 เดินทาง ${dayData.trips_count} เที่ยวในระบบ`;
+            tripInfoElem.style.color = "#0284c7";
+        } else if (dayData.is_weekend) {
+            tripInfoElem.innerHTML = `🏖️ วันหยุดสุดสัปดาห์`;
+            tripInfoElem.style.color = "#64748b";
+        } else {
+            tripInfoElem.innerHTML = `🏢 วันทำการปกติ (ไม่มีออกรถ)`;
+            tripInfoElem.style.color = "#059669";
+        }
+    }
+    
+    // Read directly from textarea in table if modified, otherwise from data
+    const currentTa = document.getElementById(`report-text-${dayNum}`);
+    const currentVal = currentTa ? currentTa.value : (dayData.work_detail || '');
+    
+    const textarea = document.getElementById("edit-driver-day-textarea");
+    if (textarea) textarea.value = currentVal;
+    
+    document.getElementById("modal-edit-driver-day")?.classList.add("open");
+}
+
+function closeDayEditModal() {
+    document.getElementById("modal-edit-driver-day")?.classList.remove("open");
+}
+
+function appendDayPreset(text) {
+    const ta = document.getElementById("edit-driver-day-textarea");
+    if (!ta) return;
+    const cur = ta.value.trim();
+    if (cur.length === 0 || cur === 'วันหยุดราชการ') {
+        ta.value = text;
+    } else {
+        ta.value = cur + '\n' + text;
+    }
+}
+
+function setDayPreset(text) {
+    const ta = document.getElementById("edit-driver-day-textarea");
+    if (ta) ta.value = text;
+}
+
+async function submitDayEditModal(e) {
+    e.preventDefault();
+    const dayNum = parseInt(document.getElementById("edit-driver-day-num").value);
+    const textarea = document.getElementById("edit-driver-day-textarea");
+    const detail = textarea ? textarea.value.trim() : '';
+    
+    // Update local table textarea
+    const tableTa = document.getElementById(`report-text-${dayNum}`);
+    if (tableTa) tableTa.value = detail;
+    
+    closeDayEditModal();
+    await saveSingleDay(dayNum, detail);
+}
+
+async function quickResetFromModal() {
+    const dayNum = parseInt(document.getElementById("edit-driver-day-num").value);
+    closeDayEditModal();
+    await quickResetSingleDay(dayNum);
+}
+
+// ----------------- Save & Reset API Calls -----------------
+
+async function saveSingleDay(dayNum, explicitText) {
+    if (!currentReportData) return;
+    
+    const driverSelect = document.getElementById("driver-report-driver-select");
+    const monthSelect = document.getElementById("driver-report-month-select");
+    const driverId = parseInt(driverSelect?.value || currentReportData.driver.id);
+    const monthStr = monthSelect?.value || currentReportData.month;
+    
+    let workDetail = explicitText;
+    if (workDetail === undefined) {
+        const ta = document.getElementById(`report-text-${dayNum}`);
+        workDetail = ta ? ta.value.trim() : '';
+    }
+    
+    try {
+        const res = await fetch("/api/driver-reports/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: monthStr,
+                items: [{
+                    day_num: dayNum,
+                    work_detail: workDetail
+                }]
+            })
+        });
+        
+        const resData = await res.json();
+        if (res.ok && resData.success) {
+            // Visual green flash on textarea
+            const ta = document.getElementById(`report-text-${dayNum}`);
+            if (ta) {
+                ta.style.transition = "background-color 0.3s ease";
+                ta.style.backgroundColor = "#dcfce7";
+                setTimeout(() => {
+                    ta.style.backgroundColor = "";
+                }, 800);
+            }
+            
+            // Reload silently to refresh print templates and meta
+            const refreshRes = await fetch(`/api/driver-reports?driver_id=${driverId}&month=${monthStr}`);
+            if (refreshRes.ok) {
+                currentReportData = await refreshRes.json();
+                renderPrintDriverReport(currentReportData);
+            }
+        } else {
+            throw new Error(resData.detail || "บันทึกไม่สำเร็จ");
+        }
+    } catch (e) {
+        console.error("Save single day error:", e);
+        alert(`เกิดข้อผิดพลาดในการบันทึกวันที่ ${dayNum}: ${e.message}`);
     }
 }
 
@@ -2683,7 +2864,7 @@ async function saveDriverReportChanges() {
         
         const resData = await res.json();
         if (res.ok && resData.success) {
-            alert("💾 บันทึกผลการปฏิบัติงาน ผขร. เรียบร้อยแล้วครับ!");
+            alert("💾 บันทึกผลการปฏิบัติงาน ผขร. ครบทุกวันเรียบร้อยแล้วครับ!");
             await loadDriverPerformanceReport();
         } else {
             throw new Error(resData.detail || "บันทึกไม่สำเร็จ");
@@ -2780,4 +2961,5 @@ function printDriverPerformanceReport() {
         document.body.className = "";
     }, 1000);
 }
+
 

@@ -1117,6 +1117,9 @@ def get_driver_monthly_report(driver_id: int, month: str):
         is_weekend = (weekday in [5, 6])
         day_trips = trips_by_day.get(day, [])
         
+        # Determine time slots for the date column
+        time_slots = [] if is_weekend else ["08.30 - 12.00", "13.00 - 16.30"]
+        
         # Determine work detail
         if day in saved_logs:
             work_detail = saved_logs[day]["work_detail"]
@@ -1154,7 +1157,7 @@ def get_driver_monthly_report(driver_id: int, month: str):
                 if is_weekend:
                     work_detail = "วันหยุดราชการ"
                 else:
-                    work_detail = "ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ ประจำสำนักงาน"
+                    work_detail = "เวลา 08.30 - 12.00 น. ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ ประจำสำนักงาน\nเวลา 13.00 - 16.30 น. ปฏิบัติงานประจำสำนักงาน และเตรียมความพร้อมยานพาหนะ"
         
         days_data.append({
             "day_num": day,
@@ -1162,6 +1165,7 @@ def get_driver_monthly_report(driver_id: int, month: str):
             "thai_date_str": f"{day} {THAI_MONTH_NAMES[m]} {buddhist_year}",
             "weekday_name": THAI_DAY_NAMES[weekday],
             "is_weekend": is_weekend,
+            "time_slots": time_slots,
             "trips_count": len(day_trips),
             "work_detail": work_detail,
             "is_manual_edit": is_manual
