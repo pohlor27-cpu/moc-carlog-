@@ -362,8 +362,8 @@
                         <div style="font-size: 0.82rem; color: #64748b;">คลิกที่ปุ่ม ☑️ เพื่อติ๊กถูกตรวจรับรายวัน หรือกดปุ่มอนุมัติรวดเดียวด้านขวา</div>
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button type="button" class="btn-submit" onclick="bulkVerifyAllDrivers('verify_all')" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px;">
-                            ✅ ตรวจรับผ่านทั้งหมด (4 คน)
+                        <button type="button" class="btn-submit" id="btn-matrix-bulk-all" onclick="bulkVerifyAllDrivers('verify_all')" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 0.85rem; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px;">
+                            ✅ ตรวจรับผ่านถึงปัจจุบัน (4 คน)
                         </button>
                         <button type="button" class="btn-cancel" onclick="bulkVerifyAllDrivers('unverify_all')" style="font-size: 0.85rem; padding: 7px 14px;">
                             🔄 ล้างสถานะตรวจรับ
@@ -407,8 +407,8 @@
                             <div style="font-size: 0.85rem; color: #64748b;" id="individual-driver-subtitle">รถประจำสำนักงาน หมายเลขทะเบียน ขก 225 นนทบุรี | ประจำเดือน ตุลาคม 2569</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <button type="button" class="btn-submit" onclick="bulkVerifyCurrentDriver('verify_all')" style="background: #10b981; font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
-                                ☑️ ติ๊กถูกครบทั้งเดือน
+                            <button type="button" class="btn-submit" id="btn-individual-bulk-cur" onclick="bulkVerifyCurrentDriver('verify_all')" style="background: #10b981; font-size: 0.85rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                ☑️ ตรวจรับผ่านถึงปัจจุบัน
                             </button>
                             <button type="button" class="btn-cancel" onclick="bulkVerifyCurrentDriver('unverify_all')" style="font-size: 0.85rem; padding: 6px 12px;">
                                 🔄 รีเซ็ต

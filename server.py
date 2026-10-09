@@ -1258,17 +1258,25 @@ def get_moderator_driver_verification(month: str = ""):
     cursor = conn.cursor()
     
     # Parse month
+    now = datetime.now()
     try:
         parts = month.split("-")
         y, m = int(parts[0]), int(parts[1])
     except Exception:
-        now = datetime.now()
         y, m = now.year, now.month
         month = f"{y:04d}-{m:02d}"
         
     num_days = calendar.monthrange(y, m)[1]
     buddhist_year = y + 543
     thai_month_str = f"{THAI_MONTH_NAMES[m]} {buddhist_year}"
+    
+    # Determine max verifiable day (only elapsed days up to current date)
+    if y < now.year or (y == now.year and m < now.month):
+        max_verifiable_day = num_days
+    elif y == now.year and m == now.month:
+        max_verifiable_day = min(num_days, now.day)
+    else:
+        max_verifiable_day = 0
     
     # 1. Fetch all 4 drivers
     cursor.execute("SELECT * FROM drivers WHERE is_active = 1 ORDER BY id ASC")
@@ -1306,32 +1314,40 @@ def get_moderator_driver_verification(month: str = ""):
         # Get driver monthly report data using helper
         rep = get_driver_monthly_report(d_id, month)
         
-        # Calculate stats
+        # Calculate stats up to max_verifiable_day
         verified_count = 0
-        total_workdays = 0
+        total_workdays_month = 0
+        total_workdays_up_to_today = 0
         days_augmented = []
         for day_obj in rep["days"]:
             d_num = day_obj["day_num"]
             is_weekend = day_obj["is_weekend"]
+            is_future = (d_num > max_verifiable_day)
+            
             if not is_weekend:
-                total_workdays += 1
+                total_workdays_month += 1
+                if not is_future:
+                    total_workdays_up_to_today += 1
             
             v_log = verif_map.get(d_num, {})
-            is_ver = v_log.get("is_verified", 0)
-            if is_ver:
+            is_ver = v_log.get("is_verified", 0) if not is_future else 0
+            if is_ver and not is_future:
                 verified_count += 1
                 
             day_augmented = dict(day_obj)
             day_augmented["is_verified"] = is_ver
+            day_augmented["is_future"] = is_future
             day_augmented["officer_notes"] = v_log.get("officer_notes", "")
             day_augmented["verified_by"] = v_log.get("verified_by", "")
             day_augmented["verified_at"] = v_log.get("verified_at", "")
             days_augmented.append(day_augmented)
             
         d_dict["verified_count"] = verified_count
-        d_dict["total_workdays"] = total_workdays
+        d_dict["total_workdays"] = total_workdays_month
+        d_dict["total_workdays_up_to_today"] = total_workdays_up_to_today
         d_dict["total_days"] = num_days
-        d_dict["is_all_verified"] = (verified_count >= num_days)
+        d_dict["max_verifiable_day"] = max_verifiable_day
+        d_dict["is_all_verified"] = (verified_count >= max_verifiable_day) if max_verifiable_day > 0 else False
         drivers_list.append(d_dict)
         driver_reports[d_id] = days_augmented
 
@@ -1341,15 +1357,16 @@ def get_moderator_driver_verification(month: str = ""):
         dt = datetime(y, m, day)
         weekday = dt.weekday()
         is_weekend = (weekday in [5, 6])
+        is_future = (day > max_verifiable_day)
         
         day_drivers_data = {}
-        day_all_verified = True
+        day_all_verified = True if not is_future else False
         
         for d in drivers_list:
             d_id = d["id"]
             d_day_data = driver_reports[d_id][day - 1]
             day_drivers_data[d_id] = d_day_data
-            if not d_day_data.get("is_verified"):
+            if not d_day_data.get("is_verified") or is_future:
                 day_all_verified = False
                 
         matrix_days.append({
@@ -1358,6 +1375,7 @@ def get_moderator_driver_verification(month: str = ""):
             "thai_date_str": f"{day} {THAI_MONTH_NAMES[m]} {buddhist_year}",
             "weekday_name": THAI_DAY_NAMES[weekday],
             "is_weekend": is_weekend,
+            "is_future": is_future,
             "all_verified": day_all_verified,
             "drivers": day_drivers_data
         })
@@ -1368,6 +1386,8 @@ def get_moderator_driver_verification(month: str = ""):
         "month": month,
         "month_thai": thai_month_str,
         "num_days": num_days,
+        "max_verifiable_day": max_verifiable_day,
+        "today_day": now.day if (y == now.year and m == now.month) else None,
         "drivers": drivers_list,
         "matrix_days": matrix_days,
         "driver_reports": driver_reports
@@ -1383,6 +1403,24 @@ class VerificationToggleReq(BaseModel):
 
 @app.post("/api/moderator/driver-verification/toggle")
 def toggle_driver_verification(req: VerificationToggleReq):
+    now = datetime.now()
+    try:
+        parts = req.report_month.split("-")
+        y, m = int(parts[0]), int(parts[1])
+    except Exception:
+        y, m = now.year, now.month
+    
+    num_days = calendar.monthrange(y, m)[1]
+    if y < now.year or (y == now.year and m < now.month):
+        max_verifiable_day = num_days
+    elif y == now.year and m == now.month:
+        max_verifiable_day = min(num_days, now.day)
+    else:
+        max_verifiable_day = 0
+        
+    if req.day_num > max_verifiable_day:
+        return {"success": False, "message": "ไม่สามารถตรวจรับวันล่วงหน้าได้ ตรวจรับได้ถึงวันที่ปัจจุบันเท่านั้น"}
+        
     conn = database.get_db()
     cursor = conn.cursor()
     
@@ -1414,12 +1452,27 @@ def toggle_driver_verification(req: VerificationToggleReq):
 class VerificationBulkReq(BaseModel):
     report_month: str
     driver_id: Optional[int] = None # None = all drivers
-    day_num: Optional[int] = None # None = all days in month
+    day_num: Optional[int] = None # None = all days up to today
     action: str = "verify_all" # "verify_all" or "unverify_all"
     verified_by: Optional[str] = "เจ้าหน้าที่ผู้ตรวจรับ"
 
 @app.post("/api/moderator/driver-verification/bulk")
 def bulk_driver_verification(req: VerificationBulkReq):
+    now = datetime.now()
+    try:
+        parts = req.report_month.split("-")
+        y, m = int(parts[0]), int(parts[1])
+    except Exception:
+        y, m = now.year, now.month
+        
+    num_days = calendar.monthrange(y, m)[1]
+    if y < now.year or (y == now.year and m < now.month):
+        max_verifiable_day = num_days
+    elif y == now.year and m == now.month:
+        max_verifiable_day = min(num_days, now.day)
+    else:
+        max_verifiable_day = 0
+        
     conn = database.get_db()
     cursor = conn.cursor()
     
@@ -1433,17 +1486,15 @@ def bulk_driver_verification(req: VerificationBulkReq):
         cursor.execute("SELECT id FROM drivers WHERE is_active = 1")
         target_driver_ids = [r["id"] for r in cursor.fetchall()]
         
-    # Target days
+    # Target days (only up to max_verifiable_day when verifying)
     if req.day_num is not None:
-        target_days = [req.day_num]
+        if req.day_num <= max_verifiable_day or req.action == "unverify_all":
+            target_days = [req.day_num]
+        else:
+            target_days = []
     else:
-        try:
-            parts = req.report_month.split("-")
-            y, m = int(parts[0]), int(parts[1])
-            num_days = calendar.monthrange(y, m)[1]
-        except Exception:
-            num_days = 31
-        target_days = list(range(1, num_days + 1))
+        limit_day = max_verifiable_day if req.action == "verify_all" else num_days
+        target_days = list(range(1, limit_day + 1))
         
     for did in target_driver_ids:
         for d in target_days:
@@ -1458,7 +1509,7 @@ def bulk_driver_verification(req: VerificationBulkReq):
             
     conn.commit()
     conn.close()
-    return {"success": True, "action": req.action, "total_updated": len(target_driver_ids) * len(target_days)}
+    return {"success": True, "count": len(target_days) * len(target_driver_ids), "max_verifiable_day": max_verifiable_day}
 
 class DriverMonthlyApprovalReq(BaseModel):
     driver_id: int

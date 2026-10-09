@@ -3012,8 +3012,10 @@ async function loadModeratorVerificationData() {
         const monthLabel = document.getElementById("matrix-month-label");
         if (monthLabel) monthLabel.textContent = data.month_thai;
         
-        // Update Metrics
-        let totalItems = data.num_days * data.drivers.length;
+        const maxDays = data.max_verifiable_day || data.num_days;
+        
+        // Update Metrics (only up to current date)
+        let totalItems = maxDays * data.drivers.length;
         let verifiedItems = 0;
         data.drivers.forEach(d => {
             verifiedItems += (d.verified_count || 0);
@@ -3023,9 +3025,16 @@ async function loadModeratorVerificationData() {
         const mVer = document.getElementById("matrix-metric-verified-count");
         const mPend = document.getElementById("matrix-metric-pending-count");
         
-        if (mDays) mDays.textContent = `${data.num_days} วัน`;
+        if (mDays) mDays.textContent = `${maxDays} วัน (ถึงปัจจุบัน)`;
         if (mVer) mVer.textContent = `${verifiedItems} / ${totalItems} (${Math.round((verifiedItems / (totalItems || 1)) * 100)}%)`;
         if (mPend) mPend.textContent = `${Math.max(0, totalItems - verifiedItems)} รายการ`;
+        
+        // Update bulk button labels
+        const bulkAllBtn = document.getElementById("btn-matrix-bulk-all");
+        if (bulkAllBtn) bulkAllBtn.innerHTML = `✅ ตรวจรับผ่านถึงปัจจุบัน (1-${maxDays} ${data.month_thai})`;
+        
+        const bulkCurBtn = document.getElementById("btn-individual-bulk-cur");
+        if (bulkCurBtn) bulkCurBtn.innerHTML = `☑️ ตรวจรับผ่านถึงปัจจุบัน (1-${maxDays} ${data.month_thai})`;
         
         // Render Views
         renderModeratorMatrix(data);
@@ -3042,9 +3051,21 @@ function renderModeratorMatrix(data) {
     
     tbody.innerHTML = data.matrix_days.map(d => {
         const rowWeekendClass = d.is_weekend ? "matrix-row-weekend" : "";
+        const isFuture = d.is_future;
         
         // Render 4 Driver cells
         const driverCellsHtml = data.drivers.map(drv => {
+            if (isFuture) {
+                return `
+                    <td>
+                        <div class="matrix-cell-pill" style="background: #f8fafc; border: 1px dashed #cbd5e1; opacity: 0.75; padding: 10px 8px; text-align: center;">
+                            <div style="font-weight: 600; font-size: 0.78rem; color: #94a3b8;">⏳ ยังไม่ถึงกำหนด</div>
+                            <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 2px;">(วันข้างหน้า)</div>
+                        </div>
+                    </td>
+                `;
+            }
+            
             const drvDay = d.drivers[drv.id] || {};
             const isVer = drvDay.is_verified ? true : false;
             const tripsCount = drvDay.trips_count || 0;
@@ -3073,7 +3094,7 @@ function renderModeratorMatrix(data) {
                     <div class="matrix-cell-pill ${pillClass}">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
                             <span style="font-weight: 700; font-size: 0.82rem;">${pillIcon} ${pillText}</span>
-                            <button type="button" class="matrix-check-btn ${checkedClass}" onclick="toggleDayVerification(${drv.id}, ${d.day_num})" title="คลิกเพื่อสลับสถานะตรวจรับ">
+                            <button type="button" class="matrix-check-btn ${checkedClass}" onclick="toggleDayVerification(${drv.id}, ${d.day_num})" title="คลิกเพื่อตรวจรับ">
                                 ${checkedLabel}
                             </button>
                         </div>
@@ -3085,14 +3106,19 @@ function renderModeratorMatrix(data) {
             `;
         }).join('');
         
-        const allVerHtml = d.all_verified 
-            ? `<span style="background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.78rem;">✅ ครบ</span>`
-            : `<span style="background: #f1f5f9; color: #94a3b8; padding: 4px 8px; border-radius: 12px; font-size: 0.78rem;">⏳ รอตรวจ</span>`;
+        let allVerHtml = '';
+        if (isFuture) {
+            allVerHtml = `<span style="background: #f1f5f9; color: #94a3b8; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem;">⏳ วันข้างหน้า</span>`;
+        } else if (d.all_verified) {
+            allVerHtml = `<span style="background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.78rem;">✅ ครบ</span>`;
+        } else {
+            allVerHtml = `<span style="background: #fef3c7; color: #b45309; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.78rem;">⏳ รอตรวจ</span>`;
+        }
             
         return `
-            <tr class="${rowWeekendClass}">
+            <tr class="${rowWeekendClass}" style="${isFuture ? 'opacity: 0.7;' : ''}">
                 <td style="text-align: center; vertical-align: middle;">
-                    <div style="font-size: 1.15rem; font-weight: 800; color: ${d.is_weekend ? '#64748b' : '#0f172a'};">${d.day_num}</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: ${d.is_weekend ? '#64748b' : (isFuture ? '#94a3b8' : '#0f172a')};">${d.day_num}</div>
                     <div style="font-size: 0.78rem; font-weight: 600; color: ${d.is_weekend ? '#94a3b8' : '#475569'};">วัน${d.weekday_name}</div>
                 </td>
                 ${driverCellsHtml}
@@ -3106,6 +3132,7 @@ function renderModeratorMatrix(data) {
 
 function renderModeratorIndividualChecklist(data) {
     if (!data || !data.drivers) return;
+    const maxDays = data.max_verifiable_day || data.num_days;
     
     // 1. Render Driver Selector Cards
     const selectorContainer = document.getElementById("individual-driver-selector");
@@ -3115,7 +3142,7 @@ function renderModeratorIndividualChecklist(data) {
             const isAppr = drv.approval && drv.approval.is_approved;
             const badgeHtml = isAppr 
                 ? `<span style="background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 10px;">✅ อนุมัติแล้ว</span>`
-                : `<span style="background: #f1f5f9; color: #64748b; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 10px;">ตรวจ ${drv.verified_count || 0}/${data.num_days} วัน</span>`;
+                : `<span style="background: #eff6ff; color: #1d4ed8; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 10px;">ตรวจ ${drv.verified_count || 0}/${maxDays} วัน</span>`;
                 
             return `
                 <div class="driver-select-card ${activeClass}" onclick="selectIndividualModDriver(${drv.id})">
@@ -3141,15 +3168,14 @@ function renderModeratorIndividualChecklist(data) {
     if (titleElem) titleElem.textContent = currentDrv.name;
     if (subElem) subElem.textContent = `รถประจำสำนักงาน หมายเลขทะเบียน ${currentDrv.license_plate} | ประจำเดือน ${data.month_thai}`;
     
-    // Progress
+    // Progress (against maxDays)
     const verCount = currentDrv.verified_count || 0;
-    const totalDays = data.num_days || 31;
-    const pct = Math.round((verCount / (totalDays || 1)) * 100);
+    const pct = Math.round((verCount / (maxDays || 1)) * 100);
     
     const pBar = document.getElementById("individual-progress-bar");
     const pText = document.getElementById("individual-progress-text");
     if (pBar) pBar.style.width = `${pct}%`;
-    if (pText) pText.textContent = `${verCount} / ${totalDays} วัน (${pct}%)`;
+    if (pText) pText.textContent = `${verCount} / ${maxDays} วัน (${pct}%) [ถึงปัจจุบัน]`;
     
     // 3. Render Checklist Rows
     const drvDays = data.driver_reports ? (data.driver_reports[currentDrv.id] || []) : [];
@@ -3157,6 +3183,7 @@ function renderModeratorIndividualChecklist(data) {
     if (tbody) {
         tbody.innerHTML = drvDays.map(d => {
             const isVer = d.is_verified ? true : false;
+            const isFuture = d.is_future;
             const rowWeekendClass = d.is_weekend ? "matrix-row-weekend" : "";
             
             let dateHtml = '';
@@ -3167,27 +3194,34 @@ function renderModeratorIndividualChecklist(data) {
                 `;
             } else {
                 dateHtml = `
-                    <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 2px;">${d.day_num}</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: ${isFuture ? '#94a3b8' : '#0f172a'}; margin-bottom: 2px;">${d.day_num}</div>
                     <div style="font-size: 0.78rem; font-weight: 600; color: #475569;">(${d.weekday_name})</div>
                     <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">08.30-16.30</div>
                 `;
             }
             
-            const statusBtn = isVer 
-                ? `<button type="button" class="btn-submit" onclick="toggleDayVerification(${currentDrv.id}, ${d.day_num})" style="background: #10b981; padding: 5px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px; box-shadow: none;">
-                       ✅ ตรวจสอบแล้ว
-                   </button>`
-                : `<button type="button" class="btn-cancel" onclick="toggleDayVerification(${currentDrv.id}, ${d.day_num})" style="padding: 5px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
-                       ⏳ คลิกเพื่อตรวจรับ
-                   </button>`;
+            let statusBtn = '';
+            if (isFuture) {
+                statusBtn = `<span style="background: #f8fafc; border: 1px dashed #cbd5e1; color: #94a3b8; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; display: inline-block;">
+                                ⏳ ยังไม่ถึงกำหนด
+                             </span>`;
+            } else if (isVer) {
+                statusBtn = `<button type="button" class="btn-submit" onclick="toggleDayVerification(${currentDrv.id}, ${d.day_num})" style="background: #10b981; padding: 5px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px; box-shadow: none;">
+                                ✅ ตรวจสอบแล้ว
+                             </button>`;
+            } else {
+                statusBtn = `<button type="button" class="btn-cancel" onclick="toggleDayVerification(${currentDrv.id}, ${d.day_num})" style="padding: 5px 12px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                                ☑️ คลิกเพื่อตรวจรับ
+                             </button>`;
+            }
                    
             return `
-                <tr class="${rowWeekendClass}">
+                <tr class="${rowWeekendClass}" style="${isFuture ? 'opacity: 0.65;' : ''}">
                     <td style="text-align: center; vertical-align: top; padding: 10px 4px;">
                         ${dateHtml}
                     </td>
                     <td style="vertical-align: top;">
-                        <div style="font-size: 0.9rem; line-height: 1.5; color: #1e293b; white-space: pre-line;">${escapeHtml(d.work_detail || '')}</div>
+                        <div style="font-size: 0.9rem; line-height: 1.5; color: ${isFuture ? '#64748b' : '#1e293b'}; white-space: pre-line;">${isFuture ? '<span style="color: #94a3b8; font-style: italic;">รอการปฏิบัติงานเมื่อถึงกำหนดวัน</span>' : escapeHtml(d.work_detail || '')}</div>
                     </td>
                     <td style="text-align: center; vertical-align: top;">
                         ${statusBtn}
@@ -3195,7 +3229,8 @@ function renderModeratorIndividualChecklist(data) {
                     <td style="vertical-align: top;">
                         <input type="text" class="form-input" style="font-size: 0.82rem; padding: 5px 8px; width: 100%;" 
                                value="${escapeHtml(d.officer_notes || '')}" 
-                               placeholder="บันทึกข้อสังเกต..." 
+                               placeholder="${isFuture ? 'รอตรวจรับเมื่อถึงกำหนด' : 'บันทึกข้อสังเกต...'}" 
+                               ${isFuture ? 'disabled' : ''}
                                onchange="saveDayOfficerNote(${currentDrv.id}, ${d.day_num}, this.value)">
                     </td>
                 </tr>
