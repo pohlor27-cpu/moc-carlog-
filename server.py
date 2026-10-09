@@ -1143,7 +1143,13 @@ def get_driver_monthly_report(driver_id: int, month: str):
                     elif d_time:
                         time_part = f"เวลา {d_time} น. "
                     
-                    passenger_part = f"พา {approver} " if approver else ""
+                    # Rule: If mission is sending documents / mail, omit the approver passenger name
+                    is_doc_dispatch = any(k in dest for k in ["ส่งเอกสาร", "ไปรษณีย์", "ส่งหนังสือ", "นำส่งเอกสาร"])
+                    if is_doc_dispatch or not approver:
+                        passenger_part = ""
+                    else:
+                        passenger_part = f"พา {approver} "
+                    
                     dist_part = f" (ระยะทาง {dist} กม.)" if dist and dist > 0 else ""
                     fuel_part = f" [เติมน้ำมันเชื้อเพลิง {fuel:g} ลิตร]" if fuel and fuel > 0 else ""
                     
@@ -1157,7 +1163,7 @@ def get_driver_monthly_report(driver_id: int, month: str):
                 if is_weekend:
                     work_detail = "วันหยุดราชการ"
                 else:
-                    work_detail = "เวลา 08.30 - 12.00 น. ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ ประจำสำนักงาน\nเวลา 13.00 - 16.30 น. ปฏิบัติงานประจำสำนักงาน และเตรียมความพร้อมยานพาหนะ"
+                    work_detail = "เวลา 08.30 - 12.00 น. ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ\nเวลา 13.00 - 16.30 น. ปฏิบัติงาน และช่วยเหลือเจ้าหน้าที่ภายในสำนักงาน"
         
         days_data.append({
             "day_num": day,
