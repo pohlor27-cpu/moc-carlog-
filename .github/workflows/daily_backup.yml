@@ -1,0 +1,51 @@
+name: Daily 19:00 Cloud Auto-Backup
+
+on:
+  schedule:
+    # 12:00 UTC = 19:00 น. (1 ทุ่มตรง) เวลาประเทศไทย (UTC+7) ทุกวัน
+    - cron: '0 12 * * *'
+  workflow_dispatch: # อนุญาตให้กดสั่งรันสำรองข้อมูลทันทีได้ด้วยตัวเอง
+
+permissions:
+  contents: write
+
+jobs:
+  cloud-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create backups directory
+        run: mkdir -p backups static
+
+      - name: Download Latest Database & Reports from Render Cloud
+        run: |
+          echo "Starting Daily 19:00 Cloud Backup from Render..."
+          
+          # 1. Download SQLite Database
+          curl -s -f -L "https://moc-carlog.onrender.com/api/backup/download-db" -o car_log.db || echo "Failed to download DB"
+          
+          # 2. Download Form 4 CSV
+          curl -s -f -L "https://moc-carlog.onrender.com/api/backup/download-csv" -o static/car_log_latest_form4.csv || echo "Failed to download CSV"
+          
+          # 3. Download Full JSON Snapshot
+          DATE_STR=$(date +'%Y%m%d')
+          curl -s -f -L "https://moc-carlog.onrender.com/api/backup/export-full" -o "backups/car_log_backup_${DATE_STR}_1900.json" || echo "Failed to download JSON"
+
+      - name: Commit and Push Backup to GitHub
+        run: |
+          git config --global user.name "MOC Cloud Auto-Backup Bot"
+          git config --global user.email "bot@moc-phetchaburi.go.th"
+          
+          git add car_log.db static/car_log_latest_form4.csv backups/
+          
+          # ตรวจสอบว่ามีข้อมูลเปลี่ยนแปลงหรือไม่
+          if git diff --staged --quiet; then
+            echo "No changes detected. Database is already up to date."
+          else
+            TIMESTAMP=$(TZ='Asia/Bangkok' date +'%Y-%m-%d %H:%M:%S')
+            git commit -m "Cloud Auto-Backup: $TIMESTAMP (19:00 Daily Sync)"
+            git push origin main
+            echo "Successfully pushed daily 19:00 backup to GitHub!"
+          fi
