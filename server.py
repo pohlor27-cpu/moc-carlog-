@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Depends, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -1544,7 +1544,100 @@ def approve_driver_monthly_report(req: DriverMonthlyApprovalReq):
     conn.close()
     return {"success": True, "message": "ลงนามอนุมัติและรับรองผลการปฏิบัติงานเรียบร้อยแล้ว"}
 
+# ==========================================
+# Automated Hands-Off Backup & Sync Endpoints
+# ==========================================
+import csv
+import io
 
+@app.get("/api/backup/download-db")
+def backup_download_db():
+    """Download current SQLite database directly."""
+    if not os.path.exists(database.DB_PATH):
+        raise HTTPException(status_code=404, detail="Database file not found")
+    return FileResponse(
+        database.DB_PATH,
+        media_type="application/x-sqlite3",
+        filename=f"car_log_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+    )
+
+@app.get("/api/backup/download-csv")
+def backup_download_csv():
+    """
+    Returns complete Form 4 Trip CSV format.
+    Compatible with Google Sheets =IMPORTDATA(...) and Excel (UTF-8 BOM).
+    """
+    conn = database.get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            t.id as 'รหัส (ID)',
+            t.trip_number as 'ลำดับเที่ยว',
+            v.license_plate as 'ทะเบียนรถ',
+            v.model as 'รุ่นรถ',
+            d.name as 'พนักงานขับรถ',
+            t.depart_date as 'วันออก',
+            t.depart_time as 'เวลาออก',
+            t.depart_mileage as 'ไมล์ออก',
+            t.destination as 'สถานที่ไป',
+            t.approver as 'ผู้รับรอง',
+            t.arrive_date as 'วันกลับ',
+            t.arrive_time as 'เวลากลับ',
+            t.arrive_mileage as 'ไมล์กลับ',
+            t.distance_km as 'ระยะทาง (กม.)',
+            t.fuel_liters as 'น้ำมัน (ลิตร)',
+            t.fuel_cost as 'ค่าน้ำมัน (บาท)',
+            t.fuel_authorizer as 'ผู้สั่งจ่าย',
+            t.status as 'สถานะ',
+            t.notes as 'หมายเหตุ',
+            t.created_at as 'บันทึกเมื่อ'
+        FROM trips t
+        LEFT JOIN vehicles v ON t.vehicle_id = v.id
+        LEFT JOIN drivers d ON t.driver_id = d.id
+        ORDER BY t.depart_date DESC, t.depart_time DESC, t.id DESC
+    """)
+    rows = cursor.fetchall()
+    cols = [col[0] for col in cursor.description]
+    conn.close()
+
+    output = io.StringIO()
+    # Write UTF-8 BOM so Excel and Google Sheets parse Thai characters
+    output.write("\ufeff")
+    writer = csv.writer(output)
+    writer.writerow(cols)
+    for r in rows:
+        writer.writerow(list(r))
+
+    csv_data = output.getvalue()
+    return Response(
+        content=csv_data.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "inline; filename=car_log_backup.csv",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
+
+@app.get("/api/backup/export-full")
+def backup_export_full():
+    """Complete JSON dump of all tables for automated synchronization."""
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    tables = ["settings", "drivers", "vehicles", "trips", "maintenance_logs", "driver_monthly_logs", "driver_verification_logs", "driver_monthly_approvals"]
+    data = {
+        "status": "success",
+        "timestamp": datetime.now().isoformat(),
+        "tables": {}
+    }
+    for tbl in tables:
+        try:
+            cursor.execute(f"SELECT * FROM {tbl}")
+            data["tables"][tbl] = [dict(r) for r in cursor.fetchall()]
+        except Exception:
+            data["tables"][tbl] = []
+    conn.close()
+    return data
 
 # Mount static frontend files
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
