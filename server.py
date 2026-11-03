@@ -1055,6 +1055,25 @@ THAI_MONTH_NAMES = [
 
 THAI_DAY_NAMES = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
 
+def normalize_24h_time(t_str: str) -> str:
+    if not t_str:
+        return ""
+    t_str = t_str.strip().replace(".", ":")
+    parts = t_str.split(":")
+    if len(parts) >= 2:
+        try:
+            h = int(parts[0])
+            m = int(parts[1])
+            # If 12-hour afternoon hour (1 <= h <= 5), convert to 24-hour afternoon (13 <= h <= 17)
+            if 1 <= h <= 5:
+                h += 12
+            elif h == 0:
+                h = 12
+            return f"{h:02d}:{m:02d}"
+        except Exception:
+            pass
+    return t_str
+
 @app.get("/api/driver-reports")
 def get_driver_monthly_report(driver_id: int, month: str):
     conn = database.get_db()
@@ -1128,13 +1147,14 @@ def get_driver_monthly_report(driver_id: int, month: str):
         else:
             is_manual = 0
             if day_trips:
-                trip_texts = []
+                # Rule: Start every operational day with vehicle readiness and cleaning maintenance
+                trip_texts = ["ตรวจเช็คความพร้อม ดูแลรักษาความสะอาด และบำรุงรักษายานพาหนะ"]
                 for idx, t in enumerate(day_trips, 1):
                     plate = t.get("license_plate", "รถประจำสำนักงาน")
                     dest = t.get("destination", "ปฏิบัติภารกิจราชการ")
                     approver = (t.get("approver") or "").strip()
-                    d_time = t.get("depart_time", "")
-                    a_time = t.get("arrive_time", "")
+                    d_time = normalize_24h_time(t.get("depart_time", ""))
+                    a_time = normalize_24h_time(t.get("arrive_time", ""))
                     dist = t.get("distance_km")
                     fuel = t.get("fuel_liters")
                     
@@ -1298,36 +1318,36 @@ THAI_HOLIDAYS = {
 }
 
 OCT_2026_BASELINE = {
-    1: ("7.19", "16.55", ""),
-    2: ("7.40", "16.54", ""),
+    1: ("07.19", "16.55", ""),
+    2: ("07.40", "16.54", ""),
     3: ("", "", ""),
     4: ("", "", ""),
-    5: ("8.05", "16.56", ""),
-    6: ("7.45", "16.52", ""),
-    7: ("8.05", "16.45", ""),
-    8: ("7.56", "16.00", ""),
-    9: ("7.19", "16.38", ""),
+    5: ("08.05", "16.56", ""),
+    6: ("07.45", "16.52", ""),
+    7: ("08.05", "16.45", ""),
+    8: ("07.56", "16.00", ""),
+    9: ("07.19", "16.38", ""),
     10: ("", "", ""),
     11: ("", "", ""),
-    12: ("7.53", "16.32", ""),
-    13: ("8.06", "16.40", ""),
-    14: ("8.05", "16.30", ""),
-    15: ("7.45", "16.40", ""),
-    16: ("6.58", "16.54", ""),
+    12: ("07.53", "16.32", ""),
+    13: ("08.06", "16.40", ""),
+    14: ("08.05", "16.30", ""),
+    15: ("07.45", "16.40", ""),
+    16: ("06.58", "16.54", ""),
     17: ("", "", ""),
     18: ("", "", ""),
-    19: ("7.48", "16.45", ""),
-    20: ("7.35", "16.38", ""),
-    21: ("7.52", "16.50", ""),
-    22: ("7.40", "16.35", ""),
-    23: ("7.17", "16.45", ""),
+    19: ("07.48", "16.45", ""),
+    20: ("07.35", "16.38", ""),
+    21: ("07.52", "16.50", ""),
+    22: ("07.40", "16.35", ""),
+    23: ("07.17", "16.45", ""),
     24: ("", "", ""),
-    25: ("7.47", "16.30", ""),
-    26: ("7.42", "16.48", ""),
-    27: ("7.38", "16.40", ""),
-    28: ("7.50", "16.35", ""),
-    29: ("7.45", "16.32", ""),
-    30: ("7.40", "16.42", ""),
+    25: ("07.47", "16.30", ""),
+    26: ("07.42", "16.48", ""),
+    27: ("07.38", "16.40", ""),
+    28: ("07.50", "16.35", ""),
+    29: ("07.45", "16.32", ""),
+    30: ("07.40", "16.42", ""),
     31: ("", "", ""),
 }
 
@@ -1340,7 +1360,7 @@ def fmt_th_time(t_str: str) -> str:
         try:
             h = int(parts[0])
             m_val = int(parts[1])
-            return f"{h}.{m_val:02d}"
+            return f"{h:02d}.{m_val:02d}"
         except Exception:
             pass
     return t_str
