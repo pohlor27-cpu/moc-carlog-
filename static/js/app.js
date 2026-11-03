@@ -3456,10 +3456,35 @@ function printDriverInspectionCertificate() {
 
 
 // =========================================================
-// DRIVER TIMESHEET MODULE (บัญชีลงเวลาปฏิบัติงาน เข้า-ออก)
+// DRIVER TIMESHEET MODULE (บัญชีลงเวลาปฏิบัติงาน เข้า-ออก 2 หน้า/เดือน)
 // =========================================================
 
 let currentTimesheetData = null;
+
+function updateContractHeaderDisplays() {
+    const contractNoInput = document.getElementById("timesheet-contract-no");
+    const contractDateInput = document.getElementById("timesheet-contract-date");
+    
+    const noVal = contractNoInput ? contractNoInput.value.trim() : "2/2570";
+    const dateVal = contractDateInput ? contractDateInput.value.trim() : "8 ตุลาคม 2569";
+    
+    // Update interactive
+    const iNo = document.getElementById("interactive-ts-contract-no");
+    const iDate = document.getElementById("interactive-ts-contract-date");
+    if (iNo) iNo.textContent = noVal;
+    if (iDate) iDate.textContent = dateVal;
+    
+    // Update print
+    const pNo = document.getElementById("print-ts-contract-no");
+    const pDate = document.getElementById("print-ts-contract-date");
+    if (pNo) pNo.textContent = noVal;
+    if (pDate) pDate.textContent = dateVal;
+    
+    if (currentTimesheetData) {
+        currentTimesheetData.contract_no = noVal;
+        currentTimesheetData.contract_date = dateVal;
+    }
+}
 
 function initDriverTimesheetUI() {
     const driverSelect = document.getElementById("timesheet-driver-select");
@@ -3480,10 +3505,7 @@ function initDriverTimesheetUI() {
     }
     
     if (monthSelect && !monthSelect.value) {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        monthSelect.value = `${y}-${m}`;
+        monthSelect.value = "2026-10";
     }
 }
 
@@ -3493,11 +3515,15 @@ async function loadDriverTimesheet() {
     const monthSelect = document.getElementById("timesheet-month-select");
     
     const driverId = driverSelect?.value || (appState.currentDriverId || 1);
-    const monthStr = monthSelect?.value || (new Date().toISOString().slice(0, 7));
+    const monthStr = monthSelect?.value || "2026-10";
     
-    const tbody = document.getElementById("interactive-timesheet-tbody");
-    if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b; font-size: 1.1rem;">⏳ กำลังคำนวณและประมวลผลเวลาเข้า-ออก...</td></tr>`;
+    const tbodyP1 = document.getElementById("interactive-timesheet-tbody-p1");
+    const tbodyP2 = document.getElementById("interactive-timesheet-tbody-p2");
+    if (tbodyP1) {
+        tbodyP1.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 35px; color: #64748b; font-size: 1.1rem;">⏳ กำลังคำนวณและประมวลผลเวลาเข้า-ออก หน้าที่ 1...</td></tr>`;
+    }
+    if (tbodyP2) {
+        tbodyP2.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 35px; color: #64748b; font-size: 1.1rem;">⏳ กำลังคำนวณและประมวลผลเวลาเข้า-ออก หน้าที่ 2...</td></tr>`;
     }
     
     try {
@@ -3506,12 +3532,18 @@ async function loadDriverTimesheet() {
         const data = await res.json();
         currentTimesheetData = data;
         
+        // Sync toolbar contract inputs
+        const contractNoInput = document.getElementById("timesheet-contract-no");
+        const contractDateInput = document.getElementById("timesheet-contract-date");
+        if (contractNoInput && data.contract_no) contractNoInput.value = data.contract_no;
+        if (contractDateInput && data.contract_date) contractDateInput.value = data.contract_date;
+        
         renderDriverTimesheet(data);
         renderPrintDriverTimesheet(data);
     } catch (e) {
         console.error("Failed to load driver timesheet:", e);
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: #ef4444;">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+        if (tbodyP1) {
+            tbodyP1.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 25px; color: #ef4444;">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
         }
     }
 }
@@ -3519,18 +3551,18 @@ async function loadDriverTimesheet() {
 function renderDriverTimesheet(data) {
     if (!data) return;
     
-    // Header & Meta
+    // Headers & Meta
     const monthElem = document.getElementById("interactive-ts-month");
-    const agencyElem = document.getElementById("interactive-ts-agency");
-    const contractorElem = document.getElementById("interactive-ts-contractor");
+    const contractNoElem = document.getElementById("interactive-ts-contract-no");
+    const contractDateElem = document.getElementById("interactive-ts-contract-date");
     const sigContractorElem = document.getElementById("interactive-ts-sig-contractor");
-    const positionElem = document.getElementById("interactive-ts-position");
+    const page1FooterElem = document.getElementById("interactive-ts-page1-footer");
     
     if (monthElem) monthElem.textContent = data.month_thai;
-    if (agencyElem) agencyElem.textContent = data.agency_name;
-    if (contractorElem) contractorElem.textContent = data.driver_name;
-    if (sigContractorElem) sigContractorElem.textContent = data.driver_name;
-    if (positionElem) positionElem.textContent = data.position;
+    if (contractNoElem) contractNoElem.textContent = data.contract_no;
+    if (contractDateElem) contractDateElem.textContent = data.contract_date;
+    if (sigContractorElem) sigContractorElem.textContent = data.driver_full_name;
+    if (page1FooterElem) page1FooterElem.textContent = data.page1_footer;
     
     // Summary
     const sumWork = document.getElementById("interactive-ts-sum-work");
@@ -3545,67 +3577,75 @@ function renderDriverTimesheet(data) {
     if (sumAbsent) sumAbsent.textContent = data.summary.total_absent_days;
     if (sumTotal) sumTotal.textContent = data.total_days;
     
-    // Rows
-    const tbody = document.getElementById("interactive-timesheet-tbody");
-    if (!tbody) return;
+    // Split into Page 1 (days 1-18) and Page 2 (days 19-end)
+    const p1Days = data.days.filter(d => d.day_num <= 18);
+    const p2Days = data.days.filter(d => d.day_num > 18);
     
-    tbody.innerHTML = data.days.map(d => {
-        const rowBg = d.is_holiday ? 'class="row-weekend"' : '';
-        const dayLabel = d.day_num.toString().padStart(2, '0');
+    const tbodyP1 = document.getElementById("interactive-timesheet-tbody-p1");
+    const tbodyP2 = document.getElementById("interactive-timesheet-tbody-p2");
+    
+    const renderRowHtml = (d) => {
+        const isVacant = d.is_holiday && !d.time_in && !d.time_out;
+        const rowBg = isVacant ? 'class="row-weekend"' : '';
         
-        if (d.is_holiday) {
+        if (isVacant) {
             return `
                 <tr ${rowBg} data-day="${d.day_num}">
-                    <td style="text-align: center; font-weight: 700; color: #64748b;">${dayLabel}</td>
-                    <td style="text-align: center; color: #64748b;">${d.weekday_name}</td>
+                    <td style="text-align: center; font-weight: 700; color: #1e293b;">${d.thai_date_str}</td>
+                    <td style="text-align: center; color: #475569; font-weight: 600;">${d.col2_name}</td>
+                    <td style="text-align: center; color: #94a3b8; background: #fafafa;"></td>
                     <td style="text-align: center; color: #94a3b8;">-</td>
-                    <td style="text-align: center; color: #cbd5e1; font-size: 0.8rem;">(วันหยุด)</td>
+                    <td style="text-align: center; color: #94a3b8; background: #fafafa;"></td>
                     <td style="text-align: center; color: #94a3b8;">-</td>
-                    <td style="text-align: center; color: #cbd5e1; font-size: 0.8rem;">(วันหยุด)</td>
-                    <td style="color: #64748b; font-style: italic; font-size: 0.88rem;">${d.remarks || 'วันหยุดราชการ'}</td>
+                    <td style="color: #64748b; font-size: 0.88rem;">${d.remarks || ''}</td>
                 </tr>
             `;
         }
         
         return `
             <tr data-day="${d.day_num}">
-                <td style="text-align: center; font-weight: 700; color: #0f172a;">${dayLabel}</td>
-                <td style="text-align: center; font-weight: 600; color: #334155;">${d.weekday_name}</td>
+                <td style="text-align: center; font-weight: 700; color: #0f172a;">${d.thai_date_str}</td>
+                <td style="text-align: center; font-weight: 600; color: #1e293b;">${d.col2_name}</td>
+                <td style="text-align: center; color: #94a3b8; font-size: 0.82rem; background: #fafafa;">
+                    <span style="border-bottom: 1px dotted #94a3b8; display: inline-block; width: 85%; height: 16px;"></span>
+                </td>
                 <td>
-                    <input type="text" class="timesheet-time-input ts-in" data-day="${d.day_num}" value="${d.time_in || ''}" placeholder="08:00">
+                    <input type="text" class="timesheet-time-input ts-in" data-day="${d.day_num}" value="${d.time_in || ''}" placeholder="07.45">
                 </td>
                 <td style="text-align: center; color: #94a3b8; font-size: 0.82rem; background: #fafafa;">
                     <span style="border-bottom: 1px dotted #94a3b8; display: inline-block; width: 85%; height: 16px;"></span>
                 </td>
                 <td>
-                    <input type="text" class="timesheet-time-input ts-out" data-day="${d.day_num}" value="${d.time_out || ''}" placeholder="16:30">
-                </td>
-                <td style="text-align: center; color: #94a3b8; font-size: 0.82rem; background: #fafafa;">
-                    <span style="border-bottom: 1px dotted #94a3b8; display: inline-block; width: 85%; height: 16px;"></span>
+                    <input type="text" class="timesheet-time-input ts-out" data-day="${d.day_num}" value="${d.time_out || ''}" placeholder="16.45">
                 </td>
                 <td>
-                    <input type="text" class="timesheet-remarks-input ts-rem" data-day="${d.day_num}" value="${escapeHtml(d.remarks || '')}" placeholder="ภารกิจ / หมายเหตุ">
+                    <input type="text" class="timesheet-remarks-input ts-rem" data-day="${d.day_num}" value="${escapeHtml(d.remarks || '')}" placeholder="">
                 </td>
             </tr>
         `;
-    }).join('');
+    };
+    
+    if (tbodyP1) tbodyP1.innerHTML = p1Days.map(renderRowHtml).join('');
+    if (tbodyP2) tbodyP2.innerHTML = p2Days.map(renderRowHtml).join('');
 }
 
 function renderPrintDriverTimesheet(data) {
     if (!data) return;
     
+    // Print Page 1 & Page 2 headers
     const printMonth = document.getElementById("print-ts-month");
-    const printAgency = document.getElementById("print-ts-agency");
-    const printContractor = document.getElementById("print-ts-contractor");
+    const printContractNo = document.getElementById("print-ts-contract-no");
+    const printContractDate = document.getElementById("print-ts-contract-date");
     const printSigDriver = document.getElementById("print-ts-sig-driver");
-    const printPosition = document.getElementById("print-ts-position");
+    const printPage1Footer = document.getElementById("print-ts-page1-footer");
     
     if (printMonth) printMonth.textContent = data.month_thai;
-    if (printAgency) printAgency.textContent = data.agency_name;
-    if (printContractor) printContractor.textContent = data.driver_name;
-    if (printSigDriver) printSigDriver.textContent = data.driver_name;
-    if (printPosition) printPosition.textContent = data.position;
+    if (printContractNo) printContractNo.textContent = data.contract_no;
+    if (printContractDate) printContractDate.textContent = data.contract_date;
+    if (printSigDriver) printSigDriver.textContent = data.driver_full_name;
+    if (printPage1Footer) printPage1Footer.textContent = data.page1_footer;
     
+    // Summary on Page 2
     const printSumWork = document.getElementById("print-ts-sum-work");
     const printSumHoliday = document.getElementById("print-ts-sum-holiday");
     const printSumLeave = document.getElementById("print-ts-sum-leave");
@@ -3618,37 +3658,43 @@ function renderPrintDriverTimesheet(data) {
     if (printSumAbsent) printSumAbsent.textContent = data.summary.total_absent_days;
     if (printSumTotal) printSumTotal.textContent = data.total_days;
     
-    const printTbody = document.getElementById("print-timesheet-tbody");
-    if (!printTbody) return;
+    const p1Days = data.days.filter(d => d.day_num <= 18);
+    const p2Days = data.days.filter(d => d.day_num > 18);
     
-    printTbody.innerHTML = data.days.map(d => {
-        const dayLabel = d.day_num.toString().padStart(2, '0');
-        if (d.is_holiday) {
+    const printTbodyP1 = document.getElementById("print-timesheet-tbody-p1");
+    const printTbodyP2 = document.getElementById("print-timesheet-tbody-p2");
+    
+    const renderPrintRow = (d) => {
+        const isVacant = d.is_holiday && !d.time_in && !d.time_out;
+        if (isVacant) {
             return `
-                <tr style="background: #f8fafc; color: #64748b;">
-                    <td style="text-align: center; font-weight: bold;">${dayLabel}</td>
-                    <td style="text-align: center;">${d.weekday_name}</td>
-                    <td style="text-align: center;">-</td>
-                    <td style="text-align: center; font-size: 8pt; color: #94a3b8;">(วันหยุด)</td>
-                    <td style="text-align: center;">-</td>
-                    <td style="text-align: center; font-size: 8pt; color: #94a3b8;">(วันหยุด)</td>
-                    <td style="font-size: 8.5pt; font-style: italic;">${escapeHtml(d.remarks || 'วันหยุดราชการ')}</td>
+                <tr style="background: #ffffff; color: #000000;">
+                    <td style="text-align: center; font-weight: bold;">${d.thai_date_str}</td>
+                    <td style="text-align: center; font-weight: bold;">${d.col2_name}</td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="text-align: center;"></td>
+                    <td style="font-size: 8.5pt;">${escapeHtml(d.remarks || '')}</td>
                 </tr>
             `;
         }
         
         return `
             <tr>
-                <td style="text-align: center; font-weight: bold;">${dayLabel}</td>
-                <td style="text-align: center;">${d.weekday_name}</td>
+                <td style="text-align: center; font-weight: bold;">${d.thai_date_str}</td>
+                <td style="text-align: center;">${d.col2_name}</td>
+                <td style="text-align: center;"></td>
                 <td style="text-align: center; font-weight: bold;">${d.time_in || ''}</td>
                 <td style="text-align: center;"></td>
                 <td style="text-align: center; font-weight: bold;">${d.time_out || ''}</td>
-                <td style="text-align: center;"></td>
                 <td style="font-size: 8.5pt;">${escapeHtml(d.remarks || '')}</td>
             </tr>
         `;
-    }).join('');
+    };
+    
+    if (printTbodyP1) printTbodyP1.innerHTML = p1Days.map(renderPrintRow).join('');
+    if (printTbodyP2) printTbodyP2.innerHTML = p2Days.map(renderPrintRow).join('');
 }
 
 async function saveDriverTimesheetChanges() {
@@ -3656,10 +3702,16 @@ async function saveDriverTimesheetChanges() {
     
     const driverSelect = document.getElementById("timesheet-driver-select");
     const monthSelect = document.getElementById("timesheet-month-select");
+    const contractNoInput = document.getElementById("timesheet-contract-no");
+    const contractDateInput = document.getElementById("timesheet-contract-date");
+    
     const driverId = parseInt(driverSelect.value);
     const reportMonth = monthSelect.value;
+    const contractNo = contractNoInput ? contractNoInput.value.trim() : "2/2570";
+    const contractDate = contractDateInput ? contractDateInput.value.trim() : "8 ตุลาคม 2569";
     
-    const rows = document.querySelectorAll("#interactive-timesheet-tbody tr");
+    // Gather from both tables
+    const rows = document.querySelectorAll("#interactive-timesheet-tbody-p1 tr, #interactive-timesheet-tbody-p2 tr");
     const items = [];
     
     rows.forEach(tr => {
@@ -3679,7 +3731,8 @@ async function saveDriverTimesheetChanges() {
     });
     
     try {
-        const res = await fetch("/api/driver-timesheet/save", {
+        // 1. Save times
+        const resTimes = await fetch("/api/driver-timesheet/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -3689,8 +3742,18 @@ async function saveDriverTimesheetChanges() {
             })
         });
         
-        const resp = await res.json();
-        if (res.ok) {
+        // 2. Save contract details
+        await fetch("/api/driver-timesheet/contract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contract_no: contractNo,
+                contract_date: contractDate
+            })
+        });
+        
+        const resp = await resTimes.json();
+        if (resTimes.ok) {
             alert("💾 " + resp.message);
             await loadDriverTimesheet();
         } else {
@@ -3742,7 +3805,7 @@ function printDriverTimesheet() {
     }
     
     // Sync inputs to print template
-    const rows = document.querySelectorAll("#interactive-timesheet-tbody tr");
+    const rows = document.querySelectorAll("#interactive-timesheet-tbody-p1 tr, #interactive-timesheet-tbody-p2 tr");
     rows.forEach(tr => {
         const dayNum = parseInt(tr.getAttribute("data-day"));
         const inInput = tr.querySelector(".ts-in");
@@ -3757,6 +3820,7 @@ function printDriverTimesheet() {
         }
     });
     
+    updateContractHeaderDisplays();
     renderPrintDriverTimesheet(currentTimesheetData);
     
     document.body.className = "printing-driver-timesheet";

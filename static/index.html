@@ -606,10 +606,10 @@
                 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
                     <div>
                         <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0 0 6px 0; display: flex; align-items: center; gap: 8px;">
-                            <span>🕒</span> บัญชีลงเวลาการปฏิบัติงาน (เข้า-ออก)
+                            <span>🕒</span> บัญชีลงเวลาการปฏิบัติงาน ผขร. (เข้า-ออก)
                         </h2>
                         <p style="font-size: 0.88rem; color: var(--body-muted); margin: 0;">
-                            คำนวณเวลาเข้างานเช้าก่อน 08:15 น. (หรือตามเที่ยวรถเช้าตรู่) และเวลากลับจริง/เลิกงาน พร้อมช่องลงลายมือชื่อ สั่งพิมพ์ A4 ได้ทันที
+                            แบบฟอร์มมาตรฐาน 2 หน้า/เดือน ตามสัญญาจ้างเหมาขับรถยนต์ คำนวณเวลาเข้างานก่อน 08:15 น. (หรือตามเที่ยวรถเช้า) สั่งพิมพ์ A4 ได้ทันที
                         </p>
                     </div>
 
@@ -627,6 +627,16 @@
                             <input type="month" id="timesheet-month-select" class="form-input" onchange="loadDriverTimesheet()" style="padding: 8px 12px; width: auto;">
                         </div>
 
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="timesheet-contract-no" style="font-size: 0.88rem; font-weight: 600; color: #cbd5e1;">สัญญาเลขที่:</label>
+                            <input type="text" id="timesheet-contract-no" class="form-input" value="2/2570" onchange="updateContractHeaderDisplays()" style="padding: 8px 10px; width: 85px; font-weight: 600; text-align: center;">
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <label for="timesheet-contract-date" style="font-size: 0.88rem; font-weight: 600; color: #cbd5e1;">ลงวันที่:</label>
+                            <input type="text" id="timesheet-contract-date" class="form-input" value="8 ตุลาคม 2569" onchange="updateContractHeaderDisplays()" style="padding: 8px 10px; width: 140px; font-weight: 600;">
+                        </div>
+
                         <button type="button" onclick="saveDriverTimesheetChanges()" class="btn-submit" style="background: #0891b2; padding: 9px 16px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(8, 145, 178, 0.35);">
                             <span>💾</span> <strong>บันทึกเวลา</strong>
                         </button>
@@ -636,54 +646,91 @@
                         </button>
 
                         <button type="button" onclick="printDriverTimesheet()" class="btn-submit" style="background: #059669; padding: 9px 16px; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);">
-                            <span>🖨️</span> <strong>สั่งพิมพ์ / PDF (A4)</strong>
+                            <span>🖨️</span> <strong>สั่งพิมพ์ / PDF (A4 2 หน้า)</strong>
                         </button>
                     </div>
                 </div>
             </section>
 
-            <!-- Interactive Document Card (A4 Portrait Paper) -->
-            <div class="driver-report-sheet-wrapper" style="background: #e2e8f0; padding: 30px 20px; border-radius: var(--radius-lg); box-shadow: inset 0 2px 8px rgba(0,0,0,0.08); overflow-x: auto; display: flex; justify-content: center;">
-                <div class="driver-report-paper-doc" id="driver-timesheet-interactive-container" style="background: #ffffff; color: #111827; width: 100%; max-width: 860px; min-height: 1100px; padding: 45px 50px; border-radius: 4px; box-shadow: 0 10px 35px rgba(0,0,0,0.15); font-family: 'Sarabun', 'TH Sarabun New', sans-serif;">
+            <!-- Interactive Document Cards (A4 Portrait Paper: Page 1 & Page 2) -->
+            <div class="driver-report-sheet-wrapper" style="background: #cbd5e1; padding: 35px 20px; border-radius: var(--radius-lg); box-shadow: inset 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto; display: flex; flex-direction: column; align-items: center; gap: 30px;">
+                
+                <!-- PAGE 1 SHEET (Days 1 to 18) -->
+                <div class="driver-report-paper-doc" id="interactive-timesheet-page1" style="background: #ffffff; color: #111827; width: 100%; max-width: 860px; min-height: 1050px; padding: 45px 50px 35px 50px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: 'Sarabun', 'TH Sarabun New', sans-serif;">
                     
                     <!-- Document Header -->
-                    <div style="text-align: center; margin-bottom: 20px;">
-                        <h2 style="font-size: 1.45rem; font-weight: 700; margin: 0 0 6px 0; color: #000; letter-spacing: -0.01em;">บัญชีลงเวลาการปฏิบัติงานของลูกจ้างเหมาบริการ</h2>
-                        <div style="font-size: 1.15rem; font-weight: 600; color: #111;">
-                            ประจำเดือน <span id="interactive-ts-month" style="font-weight: 700; color: #000; border-bottom: 1px dotted #000; padding: 0 12px; min-width: 180px; display: inline-block;">....................................................</span>
+                    <div style="text-align: center; margin-bottom: 20px; line-height: 1.45;">
+                        <h2 style="font-size: 1.45rem; font-weight: 700; margin: 0 0 4px 0; color: #000; letter-spacing: -0.01em;">บันทึกการลงเวลาการปฏิบัติงาน</h2>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: #000; margin-bottom: 3px;">ตามสัญญาจ้างเหมาปฏิบัติงานขับรถยนต์</div>
+                        <div style="font-size: 1.18rem; font-weight: 700; color: #000; margin-bottom: 3px;">
+                            เลขที่ <span id="interactive-ts-contract-no" style="border-bottom: 1px dotted #000; padding: 0 6px;">2/2570</span> ลงวันที่ <span id="interactive-ts-contract-date" style="border-bottom: 1px dotted #000; padding: 0 6px;">8 ตุลาคม 2569</span>
                         </div>
-                        <div style="font-size: 1.05rem; font-weight: 600; color: #334155; margin-top: 4px;">
-                            หน่วยงาน <span id="interactive-ts-agency" style="color: #000; font-weight: 700;">สำนักงานพาณิชย์จังหวัดเพชรบุรี</span>
+                        <div style="font-size: 1.18rem; font-weight: 700; color: #000;">
+                            ประจำเดือน<span id="interactive-ts-month" style="border-bottom: 1px dotted #000; padding: 0 8px;">ตุลาคม 2569</span>
                         </div>
                     </div>
 
-                    <!-- Contractor Info -->
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 1.05rem; font-weight: 600; color: #000; line-height: 1.6; border-bottom: 2px solid #000; padding-bottom: 8px;">
-                        <div>ชื่อ-สกุล : <strong id="interactive-ts-contractor" style="color: #000;">นายกฤษณพัฒน์ แสงหล้า</strong></div>
-                        <div>ตำแหน่ง : <span id="interactive-ts-position" style="font-weight: 700;">พนักงานขับรถยนต์</span></div>
-                    </div>
-
-                    <!-- Editable Timesheet Table -->
-                    <table class="timesheet-table" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                    <!-- Editable Timesheet Table: Page 1 (Days 1 - 18) -->
+                    <table class="timesheet-table" style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
                         <thead>
                             <tr style="background: #f8fafc;">
-                                <th style="width: 7%;">วันที่</th>
-                                <th style="width: 11%;">วัน</th>
-                                <th style="width: 13%;">เวลามา</th>
-                                <th style="width: 17%;">ลายมือชื่อ (มา)</th>
-                                <th style="width: 13%;">เวลากลับ</th>
-                                <th style="width: 17%;">ลายมือชื่อ (กลับ)</th>
-                                <th style="width: 22%;">หมายเหตุ</th>
+                                <th style="width: 18%; text-align: center;">วัน เดือน ปี</th>
+                                <th style="width: 27%; text-align: center;">ชื่อ - สกุล (ตัวบรรจง)</th>
+                                <th style="width: 13%; text-align: center;">ลายมือชื่อ</th>
+                                <th style="width: 11%; text-align: center;">เวลามา</th>
+                                <th style="width: 13%; text-align: center;">ลายมือชื่อ</th>
+                                <th style="width: 11%; text-align: center;">เวลากลับ</th>
+                                <th style="width: 7%; text-align: center;">หมายเหตุ</th>
                             </tr>
                         </thead>
-                        <tbody id="interactive-timesheet-tbody">
-                            <!-- Populated dynamically via JS -->
+                        <tbody id="interactive-timesheet-tbody-p1">
+                            <!-- Populated dynamically via JS: Days 1 to 18 -->
+                        </tbody>
+                    </table>
+
+                    <!-- Page 1 Bottom Right Continuation Cue -->
+                    <div style="text-align: right; margin-top: 14px; font-size: 1.1rem; font-weight: 600; color: #1e293b; padding-right: 4px;">
+                        <span id="interactive-ts-page1-footer">/19 ตุลาคม..</span>
+                    </div>
+
+                </div>
+
+                <!-- Page Separator Indicator -->
+                <div style="width: 100%; max-width: 860px; display: flex; align-items: center; justify-content: center; gap: 14px; color: #475569; font-size: 0.95rem; font-weight: 700;">
+                    <div style="flex: 1; height: 1.5px; background: #94a3b8;"></div>
+                    <span>📄 สิ้นสุดแผ่นที่ 1 (ขึ้นแผ่นที่ 2 ตอนสั่งพิมพ์)</span>
+                    <div style="flex: 1; height: 1.5px; background: #94a3b8;"></div>
+                </div>
+
+                <!-- PAGE 2 SHEET (Days 19 to end + Summary + Signatures) -->
+                <div class="driver-report-paper-doc" id="interactive-timesheet-page2" style="background: #ffffff; color: #111827; width: 100%; max-width: 860px; min-height: 1050px; padding: 40px 50px 45px 50px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-family: 'Sarabun', 'TH Sarabun New', sans-serif;">
+                    
+                    <!-- Page 2 Top Header -->
+                    <div style="text-align: center; margin-bottom: 16px; font-size: 1.25rem; font-weight: 700; color: #000;">
+                        - ๒ -
+                    </div>
+
+                    <!-- Editable Timesheet Table: Page 2 (Days 19 - end) -->
+                    <table class="timesheet-table" style="width: 100%; border-collapse: collapse; margin-bottom: 18px;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="width: 18%; text-align: center;">วัน เดือน ปี</th>
+                                <th style="width: 27%; text-align: center;">ชื่อ - สกุล (ตัวบรรจง)</th>
+                                <th style="width: 13%; text-align: center;">ลายมือชื่อ</th>
+                                <th style="width: 11%; text-align: center;">เวลามา</th>
+                                <th style="width: 13%; text-align: center;">ลายมือชื่อ</th>
+                                <th style="width: 11%; text-align: center;">เวลากลับ</th>
+                                <th style="width: 7%; text-align: center;">หมายเหตุ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="interactive-timesheet-tbody-p2">
+                            <!-- Populated dynamically via JS: Days 19 to end of month -->
                         </tbody>
                     </table>
 
                     <!-- Timesheet Summary & Signatures Footer -->
-                    <div style="margin-top: 20px; font-size: 1.02rem; line-height: 1.8; color: #000;">
-                        <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 14px; font-weight: 600; margin-bottom: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px;">
+                    <div style="margin-top: 18px; font-size: 1.05rem; line-height: 1.8; color: #000;">
+                        <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 10px 16px; font-weight: 600; margin-bottom: 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px;">
                             <div>มาปฏิบัติงาน : <strong id="interactive-ts-sum-work" style="color: #059669;">-</strong> วัน</div>
                             <div>วันหยุดราชการ : <strong id="interactive-ts-sum-holiday" style="color: #d97706;">-</strong> วัน</div>
                             <div>ลา : <strong id="interactive-ts-sum-leave">0</strong> วัน</div>
@@ -691,23 +738,24 @@
                             <div>รวม : <strong id="interactive-ts-sum-total">31</strong> วัน</div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; text-align: center; margin-top: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; text-align: center; margin-top: 25px;">
                             <div>
                                 <div>(ลงชื่อ)....................................................ผู้รับจ้าง/ผู้ปฏิบัติงาน</div>
-                                <div style="margin-top: 4px;">( <strong id="interactive-ts-sig-contractor">นายกฤษณพัฒน์ แสงหล้า</strong> )</div>
-                                <div>ตำแหน่ง พนักงานขับรถยนต์</div>
-                                <div style="margin-top: 4px; color: #475569; font-size: 0.92rem;">วันที่ ......./......./.......</div>
+                                <div style="margin-top: 6px;">( <strong id="interactive-ts-sig-contractor">นายกฤษณพัฒน์ แสงหล้า</strong> )</div>
+                                <div style="margin-top: 2px;">ตำแหน่ง พนักงานขับรถยนต์</div>
+                                <div style="margin-top: 4px; color: #475569; font-size: 0.95rem;">วันที่ ......./......./.......</div>
                             </div>
                             <div>
-                                <div>(ลงชื่อ)....................................................ผู้ควบคุมงาน/ผู้ตรวจรับพัสดุ</div>
-                                <div style="margin-top: 4px;">( .................................................... )</div>
-                                <div>ตำแหน่ง ....................................................</div>
-                                <div style="margin-top: 4px; color: #475569; font-size: 0.92rem;">วันที่ ......./......./.......</div>
+                                <div>(ลงชื่อ)....................................................ผู้ว่าจ้าง/ผู้ควบคุมงาน/ผู้ตรวจรับพัสดุ</div>
+                                <div style="margin-top: 6px;">( .................................................... )</div>
+                                <div style="margin-top: 2px;">ตำแหน่ง ....................................................</div>
+                                <div style="margin-top: 4px; color: #475569; font-size: 0.95rem;">วันที่ ......./......./.......</div>
                             </div>
                         </div>
                     </div>
 
                 </div>
+
             </div>
 
         </div>
@@ -1789,59 +1837,88 @@
     </div>
 
     <!-- ------------------------------------------------------------- -->
-    <!-- 7. TEMPLATE เอกสารราชการ: บัญชีลงเวลาการปฏิบัติงาน ผขร. (เข้า-ออก) สำหรับสั่งพิมพ์ A4 แนวตั้ง -->
+    <!-- 7. TEMPLATE เอกสารราชการ: บัญชีลงเวลาการปฏิบัติงาน ผขร. (เข้า-ออก) สำหรับสั่งพิมพ์ A4 แนวตั้ง 2 หน้า -->
     <!-- ------------------------------------------------------------- -->
     <div id="print-driver-timesheet-area" class="print-form-container" style="display: none;">
-        <div class="timesheet-print-page">
-            <div style="text-align: center; margin-bottom: 8px;">
-                <h2 style="font-size: 15pt; font-weight: bold; margin: 0 0 4px 0; color: #000;">บัญชีลงเวลาการปฏิบัติงานของลูกจ้างเหมาบริการ</h2>
-                <div style="font-size: 12pt; font-weight: bold; color: #000;">
-                    ประจำเดือน <span id="print-ts-month">....................................................</span>
+        <!-- PRINT PAGE 1 (Days 1 to 18) -->
+        <div class="timesheet-print-page timesheet-print-page-1">
+            <div style="text-align: center; margin-bottom: 8px; line-height: 1.35;">
+                <div style="font-size: 15pt; font-weight: bold; margin: 0 0 2px 0; color: #000;">บันทึกการลงเวลาการปฏิบัติงาน</div>
+                <div style="font-size: 14pt; font-weight: bold; margin: 0 0 2px 0; color: #000;">ตามสัญญาจ้างเหมาปฏิบัติงานขับรถยนต์</div>
+                <div style="font-size: 13pt; font-weight: bold; margin: 0 0 2px 0; color: #000;">
+                    เลขที่ <span id="print-ts-contract-no">2/2570</span> ลงวันที่ <span id="print-ts-contract-date">8 ตุลาคม 2569</span>
                 </div>
-                <div style="font-size: 11pt; font-weight: bold; color: #111; margin-top: 2px;">
-                    หน่วยงาน <span id="print-ts-agency">สำนักงานพาณิชย์จังหวัดเพชรบุรี</span>
+                <div style="font-size: 13pt; font-weight: bold; color: #000;">
+                    ประจำเดือน<span id="print-ts-month">ตุลาคม 2569</span>
                 </div>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11pt; font-weight: bold; border-bottom: 1.5pt solid #000; padding-bottom: 3px;">
-                <div>ชื่อ-สกุล : <span id="print-ts-contractor">....................................................</span></div>
-                <div>ตำแหน่ง : <span id="print-ts-position">พนักงานขับรถยนต์</span></div>
             </div>
 
             <table class="timesheet-print-table">
                 <thead>
                     <tr>
-                        <th style="width: 7%;">วันที่</th>
-                        <th style="width: 10%;">วัน</th>
-                        <th style="width: 12%;">เวลามา</th>
-                        <th style="width: 18%;">ลายมือชื่อ (มา)</th>
-                        <th style="width: 12%;">เวลากลับ</th>
-                        <th style="width: 18%;">ลายมือชื่อ (กลับ)</th>
-                        <th style="width: 23%;">หมายเหตุ</th>
+                        <th style="width: 18%;">วัน เดือน ปี</th>
+                        <th style="width: 27%;">ชื่อ - สกุล (ตัวบรรจง)</th>
+                        <th style="width: 13%;">ลายมือชื่อ</th>
+                        <th style="width: 11%;">เวลามา</th>
+                        <th style="width: 13%;">ลายมือชื่อ</th>
+                        <th style="width: 11%;">เวลากลับ</th>
+                        <th style="width: 7%;">หมายเหตุ</th>
                     </tr>
                 </thead>
-                <tbody id="print-timesheet-tbody">
-                    <!-- Populated dynamically via JS -->
+                <tbody id="print-timesheet-tbody-p1">
+                    <!-- Populated dynamically via JS: Days 1 to 18 -->
                 </tbody>
             </table>
 
-            <div style="margin-top: 10px; font-size: 10pt; line-height: 1.5; color: #000;">
-                <div style="font-weight: bold; margin-bottom: 12px; border-top: 1pt solid #000; padding-top: 4px;">
-                    สรุป: มาปฏิบัติงาน <span id="print-ts-sum-work">25</span> วัน | วันหยุดราชการ <span id="print-ts-sum-holiday">6</span> วัน | ลา <span id="print-ts-sum-leave">0</span> วัน | ขาด <span id="print-ts-sum-absent">0</span> วัน (รวม <span id="print-ts-sum-total">31</span> วัน)
+            <div style="text-align: right; margin-top: 10px; font-size: 11pt; font-family: 'Sarabun', 'TH Sarabun New', sans-serif;">
+                <span id="print-ts-page1-footer">/19 ตุลาคม..</span>
+            </div>
+        </div>
+
+        <!-- PRINT PAGE 2 (Days 19 to end + Summary + Signatures) -->
+        <div class="timesheet-print-page timesheet-print-page-2">
+            <div style="text-align: center; margin-bottom: 6px; font-size: 13pt; font-weight: bold; color: #000;">
+                - ๒ -
+            </div>
+
+            <table class="timesheet-print-table">
+                <thead>
+                    <tr>
+                        <th style="width: 18%;">วัน เดือน ปี</th>
+                        <th style="width: 27%;">ชื่อ - สกุล (ตัวบรรจง)</th>
+                        <th style="width: 13%;">ลายมือชื่อ</th>
+                        <th style="width: 11%;">เวลามา</th>
+                        <th style="width: 13%;">ลายมือชื่อ</th>
+                        <th style="width: 11%;">เวลากลับ</th>
+                        <th style="width: 7%;">หมายเหตุ</th>
+                    </tr>
+                </thead>
+                <tbody id="print-timesheet-tbody-p2">
+                    <!-- Populated dynamically via JS: Days 19 to end -->
+                </tbody>
+            </table>
+
+            <div style="margin-top: 14px; font-size: 10.5pt; line-height: 1.5; color: #000;">
+                <div style="font-weight: bold; margin-bottom: 16px; border-top: 1pt solid #000; border-bottom: 1pt solid #000; padding: 4px 6px; display: flex; justify-content: space-between;">
+                    <div>มาปฏิบัติงาน : <span id="print-ts-sum-work">23</span> วัน</div>
+                    <div>วันหยุดราชการ : <span id="print-ts-sum-holiday">8</span> วัน</div>
+                    <div>ลา : <span id="print-ts-sum-leave">0</span> วัน</div>
+                    <div>ขาด : <span id="print-ts-sum-absent">0</span> วัน</div>
+                    <div>รวม : <span id="print-ts-sum-total">31</span> วัน</div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center; margin-top: 18px;">
                     <div>
                         <div>(ลงชื่อ)....................................................ผู้รับจ้าง/ผู้ปฏิบัติงาน</div>
-                        <div style="margin-top: 3px;">( <strong id="print-ts-sig-driver">....................................................</strong> )</div>
-                        <div>ตำแหน่ง พนักงานขับรถยนต์</div>
-                        <div style="margin-top: 3px; font-size: 9pt;">วันที่ ......./......./.......</div>
+                        <div style="margin-top: 4px;">( <strong id="print-ts-sig-driver">นายกฤษณพัฒน์ แสงหล้า</strong> )</div>
+                        <div style="margin-top: 2px;">ตำแหน่ง พนักงานขับรถยนต์</div>
+                        <div style="margin-top: 4px; font-size: 9.5pt;">วันที่ ......./......./.......</div>
                     </div>
                     <div>
-                        <div>(ลงชื่อ)....................................................ผู้ควบคุมงาน/ผู้ตรวจรับพัสดุ</div>
-                        <div style="margin-top: 3px;">( .................................................... )</div>
-                        <div>ตำแหน่ง ....................................................</div>
-                        <div style="margin-top: 3px; font-size: 9pt;">วันที่ ......./......./.......</div>
+                        <div>(ลงชื่อ)....................................................ผู้ว่าจ้าง/ผู้ควบคุมงาน/ผู้ตรวจรับพัสดุ</div>
+                        <div style="margin-top: 4px;">( .................................................... )</div>
+                        <div style="margin-top: 2px;">ตำแหน่ง ....................................................</div>
+                        <div style="margin-top: 4px; font-size: 9.5pt;">วันที่ ......./......./.......</div>
                     </div>
                 </div>
             </div>
