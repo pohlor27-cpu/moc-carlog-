@@ -170,6 +170,24 @@ def init_db():
         )
     """)
 
+    # Driver Timesheet Logs (บัญชีลงเวลาปฏิบัติงาน เข้า-ออก พขร.)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS driver_timesheet_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            driver_id INTEGER NOT NULL,
+            report_month TEXT NOT NULL, -- e.g. '2026-10'
+            day_num INTEGER NOT NULL, -- 1 to 31
+            time_in TEXT,
+            time_out TEXT,
+            remarks TEXT,
+            is_manual_edit INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(driver_id, report_month, day_num),
+            FOREIGN KEY (driver_id) REFERENCES drivers(id)
+        )
+    """)
+
 
     # Pre-seed 4 official drivers
     cursor.execute("SELECT COUNT(*) FROM drivers")

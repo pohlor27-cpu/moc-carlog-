@@ -1043,9 +1043,10 @@ def serve_upload(filename: str):
     return JSONResponse(status_code=404, content={"message": "Image not found"})
 
 # ==========================================
-# Driver Monthly Performance Report (แบบรายงานผลการปฏิบัติงานจ้างเหมาบุคคลภายนอก พนักงานขับรถยนต์)
+# Driver Monthly Performance Report & Timesheet
 # ==========================================
 import calendar
+import random
 
 THAI_MONTH_NAMES = [
     "", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -1249,6 +1250,239 @@ def reset_driver_monthly_report(req: DriverReportResetReq):
             DELETE FROM driver_monthly_logs
             WHERE driver_id = ? AND report_month = ?
         """, (req.driver_id, req.report_month))
+    
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "รีเซ็ตข้อมูลรายงานผลการปฏิบัติงานเรียบร้อยแล้ว"}
+
+# =========================================================================
+# Driver Timesheet (บัญชีลงเวลาการปฏิบัติงาน เข้า-ออก พร้อมช่องลายมือชื่อ)
+# =========================================================================
+
+class TimesheetSaveItem(BaseModel):
+    day_num: int
+    time_in: Optional[str] = ""
+    time_out: Optional[str] = ""
+    remarks: Optional[str] = ""
+
+class TimesheetBatchSave(BaseModel):
+    driver_id: int
+    report_month: str
+    items: List[TimesheetSaveItem]
+
+class TimesheetResetReq(BaseModel):
+    driver_id: int
+    report_month: str
+    day_num: Optional[int] = None
+
+@app.get("/api/driver-timesheet")
+def get_driver_timesheet(driver_id: int, month: str):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    # 1. Driver info
+    cursor.execute("SELECT * FROM drivers WHERE id = ?", (driver_id,))
+    driver = cursor.fetchone()
+    if not driver:
+        conn.close()
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลพนักงานขับรถ")
+        
+    driver_dict = dict(driver)
+    
+    # 2. Date parsing
+    try:
+        parts = month.split("-")
+        y, m = int(parts[0]), int(parts[1])
+    except Exception:
+        now = datetime.now()
+        y, m = now.year, now.month
+        month = f"{y:04d}-{m:02d}"
+        
+    num_days = calendar.monthrange(y, m)[1]
+    buddhist_year = y + 543
+    thai_month_str = f"{THAI_MONTH_NAMES[m]} {buddhist_year}"
+    
+    # 3. Saved manual edits
+    cursor.execute("""
+        SELECT day_num, time_in, time_out, remarks, is_manual_edit
+        FROM driver_timesheet_logs
+        WHERE driver_id = ? AND report_month = ?
+    """, (driver_id, month))
+    saved_logs = {row["day_num"]: dict(row) for row in cursor.fetchall()}
+    
+    # 4. Fetch trips for driver in this month
+    cursor.execute("""
+        SELECT t.*, v.license_plate, v.model as vehicle_model
+        FROM trips t
+        JOIN vehicles v ON t.vehicle_id = v.id
+        WHERE t.driver_id = ? AND t.depart_date LIKE ?
+        ORDER BY t.depart_date ASC, t.depart_time ASC, t.id ASC
+    """, (driver_id, f"{month}%"))
+    
+    month_trips = cursor.fetchall()
+    trips_by_day = {}
+    for r in month_trips:
+        t = dict(r)
+        try:
+            d_num = int(t["depart_date"].split("-")[2])
+            if d_num not in trips_by_day:
+                trips_by_day[d_num] = []
+            trips_by_day[d_num].append(t)
+        except Exception:
+            pass
+            
+    days_data = []
+    total_work_days = 0
+    total_holidays = 0
+    
+    for day in range(1, num_days + 1):
+        dt = datetime(y, m, day)
+        weekday = dt.weekday() # 0 = Monday, 6 = Sunday
+        is_weekend = (weekday in [5, 6])
+        day_trips = trips_by_day.get(day, [])
+        
+        # Deterministic random generator per day (locks random value per day so it doesn't jump on reload)
+        rng = random.Random(y * 10000 + m * 100 + day * 17 + driver_id)
+        
+        # Normal morning clock-in window: 07:45 - 08:12 (strictly before 08:15)
+        m_rand = rng.randint(45, 72)
+        if m_rand < 60:
+            norm_in = f"07:{m_rand:02d}"
+        else:
+            norm_in = f"08:{(m_rand-60):02d}"
+            
+        # Normal afternoon clock-out window: 16:30 - 16:42
+        m_rand_out = rng.randint(30, 42)
+        norm_out = f"16:{m_rand_out:02d}"
+        
+        if day in saved_logs and saved_logs[day]["is_manual_edit"]:
+            time_in = (saved_logs[day]["time_in"] or "").strip()
+            time_out = (saved_logs[day]["time_out"] or "").strip()
+            remarks = saved_logs[day]["remarks"] or ""
+            is_manual = 1
+            is_holiday = (time_in == "" and time_out == "")
+        else:
+            is_manual = 0
+            if is_weekend and not day_trips:
+                time_in = ""
+                time_out = ""
+                remarks = "วันหยุดราชการ"
+                is_holiday = True
+            else:
+                is_holiday = False
+                if day_trips:
+                    first_trip = day_trips[0]
+                    last_trip = day_trips[-1]
+                    ft_depart = (first_trip.get("depart_time") or "").strip()
+                    
+                    # Rule 1: Early morning trip (depart before 08:15) -> use actual departure time from odometer / request form
+                    if ft_depart and ft_depart < "08:15":
+                        time_in = ft_depart
+                    else:
+                        # Afternoon or normal daytime trip -> driver arrives on time in morning before 08:15
+                        time_in = norm_in
+                        
+                    # Rule 2: Evening overtime trip (arrive back after 16:30) -> use actual arrival time
+                    lt_arrive = (last_trip.get("arrive_time") or "").strip()
+                    if lt_arrive and lt_arrive > "16:30":
+                        time_out = lt_arrive
+                    else:
+                        time_out = norm_out
+                        
+                    # Summary remarks of destination
+                    dest_list = [t.get("destination", "").strip() for t in day_trips if t.get("destination")]
+                    plates = list(dict.fromkeys(t.get("license_plate", "") for t in day_trips if t.get("license_plate")))
+                    plate_str = f" ({', '.join(plates)})" if plates else ""
+                    dest_str = " / ".join(dest_list[:2])
+                    if len(dest_list) > 2:
+                        dest_str += f" และอีก {len(dest_list)-2} ภารกิจ"
+                    
+                    prefix = "ไปราชการวันหยุด" if is_weekend else "ไปราชการ"
+                    remarks = f"{prefix}{plate_str} {dest_str}".strip()
+                else:
+                    time_in = norm_in
+                    time_out = norm_out
+                    remarks = "ปฏิบัติงานในสำนักงาน / บำรุงรักษายานพาหนะ"
+                    
+        if is_holiday:
+            total_holidays += 1
+        else:
+            total_work_days += 1
+            
+        days_data.append({
+            "day_num": day,
+            "date_str": f"{y:04d}-{m:02d}-{day:02d}",
+            "thai_date_str": f"{day} {THAI_MONTH_NAMES[m]} {buddhist_year}",
+            "weekday_name": THAI_DAY_NAMES[weekday],
+            "is_weekend": is_weekend,
+            "is_holiday": is_holiday,
+            "time_in": time_in,
+            "time_out": time_out,
+            "remarks": remarks,
+            "trips_count": len(day_trips),
+            "is_manual_edit": is_manual
+        })
+        
+    conn.close()
+    
+    return {
+        "driver_id": driver_id,
+        "driver_name": driver_dict["name"],
+        "position": "พนักงานขับรถยนต์",
+        "agency_name": get_setting_val("agency_name", "สำนักงานพาณิชย์จังหวัดเพชรบุรี"),
+        "report_month": month,
+        "month_thai": thai_month_str,
+        "total_days": num_days,
+        "summary": {
+            "total_work_days": total_work_days,
+            "total_holidays": total_holidays,
+            "total_leave_days": 0,
+            "total_absent_days": 0
+        },
+        "days": days_data
+    }
+
+@app.post("/api/driver-timesheet/save")
+def save_driver_timesheet(req: TimesheetBatchSave):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    now_str = datetime.now().isoformat()
+    for item in req.items:
+        cursor.execute("""
+            INSERT INTO driver_timesheet_logs (driver_id, report_month, day_num, time_in, time_out, remarks, is_manual_edit, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            ON CONFLICT(driver_id, report_month, day_num)
+            DO UPDATE SET time_in = excluded.time_in,
+                          time_out = excluded.time_out,
+                          remarks = excluded.remarks,
+                          is_manual_edit = 1,
+                          updated_at = excluded.updated_at
+        """, (req.driver_id, req.report_month, item.day_num, (item.time_in or "").strip(), (item.time_out or "").strip(), (item.remarks or "").strip(), now_str))
+        
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "บันทึกเวลาปฏิบัติงานเรียบร้อยแล้ว"}
+
+@app.post("/api/driver-timesheet/reset")
+def reset_driver_timesheet(req: TimesheetResetReq):
+    conn = database.get_db()
+    cursor = conn.cursor()
+    
+    if req.day_num is not None:
+        cursor.execute("""
+            DELETE FROM driver_timesheet_logs
+            WHERE driver_id = ? AND report_month = ? AND day_num = ?
+        """, (req.driver_id, req.report_month, req.day_num))
+    else:
+        cursor.execute("""
+            DELETE FROM driver_timesheet_logs
+            WHERE driver_id = ? AND report_month = ?
+        """, (req.driver_id, req.report_month))
+        
+    conn.commit()
+    conn.close()
+    return {"success": True, "message": "รีเซ็ตเวลาปฏิบัติงานกลับเป็นค่าคำนวณอัตโนมัติเรียบร้อยแล้ว"}
         
 # ----------------- Moderator Driver Verification Checklist & Approvals -----------------
 

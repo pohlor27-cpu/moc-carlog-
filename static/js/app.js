@@ -1723,17 +1723,22 @@ function switchTab(tabName) {
     const driverBtn = document.getElementById("tab-driver-btn");
     const modBtn = document.getElementById("tab-moderator-btn");
     const reportBtn = document.getElementById("tab-driver-report-btn");
+    const timesheetBtn = document.getElementById("tab-driver-timesheet-btn");
+    
     const driverView = document.getElementById("view-driver");
     const modView = document.getElementById("view-moderator");
     const reportView = document.getElementById("view-driver-report");
+    const timesheetView = document.getElementById("view-driver-timesheet");
 
     if (driverBtn) driverBtn.classList.remove("active");
     if (modBtn) modBtn.classList.remove("active");
     if (reportBtn) reportBtn.classList.remove("active");
+    if (timesheetBtn) timesheetBtn.classList.remove("active");
 
     if (driverView) driverView.style.display = "none";
     if (modView) modView.style.display = "none";
     if (reportView) reportView.style.display = "none";
+    if (timesheetView) timesheetView.style.display = "none";
 
     if (tabName === 'moderator') {
         if (!checkModeratorAuth()) {
@@ -1746,6 +1751,11 @@ function switchTab(tabName) {
         if (reportView) reportView.style.display = "block";
         initDriverReportUI();
         loadDriverPerformanceReport();
+    } else if (tabName === 'driver-timesheet') {
+        if (timesheetBtn) timesheetBtn.classList.add("active");
+        if (timesheetView) timesheetView.style.display = "block";
+        initDriverTimesheetUI();
+        loadDriverTimesheet();
     } else {
         if (driverBtn) driverBtn.classList.add("active");
         if (driverView) driverView.style.display = "block";
@@ -3444,3 +3454,314 @@ function printDriverInspectionCertificate() {
 
 
 
+
+// =========================================================
+// DRIVER TIMESHEET MODULE (บัญชีลงเวลาปฏิบัติงาน เข้า-ออก)
+// =========================================================
+
+let currentTimesheetData = null;
+
+function initDriverTimesheetUI() {
+    const driverSelect = document.getElementById("timesheet-driver-select");
+    const monthSelect = document.getElementById("timesheet-month-select");
+    
+    if (driverSelect && appState.drivers && appState.drivers.length > 0) {
+        const currentVal = driverSelect.value;
+        driverSelect.innerHTML = appState.drivers.map(d => {
+            const displayName = (d.name.startsWith('นาย') || d.name.startsWith('นาง') || d.name.startsWith('น.ส.')) ? d.name : `นาย${d.name}`;
+            return `<option value="${d.id}">${displayName}</option>`;
+        }).join('');
+        
+        if (currentVal && appState.drivers.some(d => d.id == currentVal)) {
+            driverSelect.value = currentVal;
+        } else if (appState.currentDriverId) {
+            driverSelect.value = appState.currentDriverId;
+        }
+    }
+    
+    if (monthSelect && !monthSelect.value) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        monthSelect.value = `${y}-${m}`;
+    }
+}
+
+async function loadDriverTimesheet() {
+    initDriverTimesheetUI();
+    const driverSelect = document.getElementById("timesheet-driver-select");
+    const monthSelect = document.getElementById("timesheet-month-select");
+    
+    const driverId = driverSelect?.value || (appState.currentDriverId || 1);
+    const monthStr = monthSelect?.value || (new Date().toISOString().slice(0, 7));
+    
+    const tbody = document.getElementById("interactive-timesheet-tbody");
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b; font-size: 1.1rem;">⏳ กำลังคำนวณและประมวลผลเวลาเข้า-ออก...</td></tr>`;
+    }
+    
+    try {
+        const res = await fetch(`/api/driver-timesheet?driver_id=${driverId}&month=${monthStr}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        currentTimesheetData = data;
+        
+        renderDriverTimesheet(data);
+        renderPrintDriverTimesheet(data);
+    } catch (e) {
+        console.error("Failed to load driver timesheet:", e);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 30px; color: #ef4444;">❌ โหลดข้อมูลไม่สำเร็จ: ${e.message}</td></tr>`;
+        }
+    }
+}
+
+function renderDriverTimesheet(data) {
+    if (!data) return;
+    
+    // Header & Meta
+    const monthElem = document.getElementById("interactive-ts-month");
+    const agencyElem = document.getElementById("interactive-ts-agency");
+    const contractorElem = document.getElementById("interactive-ts-contractor");
+    const sigContractorElem = document.getElementById("interactive-ts-sig-contractor");
+    const positionElem = document.getElementById("interactive-ts-position");
+    
+    if (monthElem) monthElem.textContent = data.month_thai;
+    if (agencyElem) agencyElem.textContent = data.agency_name;
+    if (contractorElem) contractorElem.textContent = data.driver_name;
+    if (sigContractorElem) sigContractorElem.textContent = data.driver_name;
+    if (positionElem) positionElem.textContent = data.position;
+    
+    // Summary
+    const sumWork = document.getElementById("interactive-ts-sum-work");
+    const sumHoliday = document.getElementById("interactive-ts-sum-holiday");
+    const sumLeave = document.getElementById("interactive-ts-sum-leave");
+    const sumAbsent = document.getElementById("interactive-ts-sum-absent");
+    const sumTotal = document.getElementById("interactive-ts-sum-total");
+    
+    if (sumWork) sumWork.textContent = data.summary.total_work_days;
+    if (sumHoliday) sumHoliday.textContent = data.summary.total_holidays;
+    if (sumLeave) sumLeave.textContent = data.summary.total_leave_days;
+    if (sumAbsent) sumAbsent.textContent = data.summary.total_absent_days;
+    if (sumTotal) sumTotal.textContent = data.total_days;
+    
+    // Rows
+    const tbody = document.getElementById("interactive-timesheet-tbody");
+    if (!tbody) return;
+    
+    tbody.innerHTML = data.days.map(d => {
+        const rowBg = d.is_holiday ? 'class="row-weekend"' : '';
+        const dayLabel = d.day_num.toString().padStart(2, '0');
+        
+        if (d.is_holiday) {
+            return `
+                <tr ${rowBg} data-day="${d.day_num}">
+                    <td style="text-align: center; font-weight: 700; color: #64748b;">${dayLabel}</td>
+                    <td style="text-align: center; color: #64748b;">${d.weekday_name}</td>
+                    <td style="text-align: center; color: #94a3b8;">-</td>
+                    <td style="text-align: center; color: #cbd5e1; font-size: 0.8rem;">(วันหยุด)</td>
+                    <td style="text-align: center; color: #94a3b8;">-</td>
+                    <td style="text-align: center; color: #cbd5e1; font-size: 0.8rem;">(วันหยุด)</td>
+                    <td style="color: #64748b; font-style: italic; font-size: 0.88rem;">${d.remarks || 'วันหยุดราชการ'}</td>
+                </tr>
+            `;
+        }
+        
+        return `
+            <tr data-day="${d.day_num}">
+                <td style="text-align: center; font-weight: 700; color: #0f172a;">${dayLabel}</td>
+                <td style="text-align: center; font-weight: 600; color: #334155;">${d.weekday_name}</td>
+                <td>
+                    <input type="text" class="timesheet-time-input ts-in" data-day="${d.day_num}" value="${d.time_in || ''}" placeholder="08:00">
+                </td>
+                <td style="text-align: center; color: #94a3b8; font-size: 0.82rem; background: #fafafa;">
+                    <span style="border-bottom: 1px dotted #94a3b8; display: inline-block; width: 85%; height: 16px;"></span>
+                </td>
+                <td>
+                    <input type="text" class="timesheet-time-input ts-out" data-day="${d.day_num}" value="${d.time_out || ''}" placeholder="16:30">
+                </td>
+                <td style="text-align: center; color: #94a3b8; font-size: 0.82rem; background: #fafafa;">
+                    <span style="border-bottom: 1px dotted #94a3b8; display: inline-block; width: 85%; height: 16px;"></span>
+                </td>
+                <td>
+                    <input type="text" class="timesheet-remarks-input ts-rem" data-day="${d.day_num}" value="${escapeHtml(d.remarks || '')}" placeholder="ภารกิจ / หมายเหตุ">
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPrintDriverTimesheet(data) {
+    if (!data) return;
+    
+    const printMonth = document.getElementById("print-ts-month");
+    const printAgency = document.getElementById("print-ts-agency");
+    const printContractor = document.getElementById("print-ts-contractor");
+    const printSigDriver = document.getElementById("print-ts-sig-driver");
+    const printPosition = document.getElementById("print-ts-position");
+    
+    if (printMonth) printMonth.textContent = data.month_thai;
+    if (printAgency) printAgency.textContent = data.agency_name;
+    if (printContractor) printContractor.textContent = data.driver_name;
+    if (printSigDriver) printSigDriver.textContent = data.driver_name;
+    if (printPosition) printPosition.textContent = data.position;
+    
+    const printSumWork = document.getElementById("print-ts-sum-work");
+    const printSumHoliday = document.getElementById("print-ts-sum-holiday");
+    const printSumLeave = document.getElementById("print-ts-sum-leave");
+    const printSumAbsent = document.getElementById("print-ts-sum-absent");
+    const printSumTotal = document.getElementById("print-ts-sum-total");
+    
+    if (printSumWork) printSumWork.textContent = data.summary.total_work_days;
+    if (printSumHoliday) printSumHoliday.textContent = data.summary.total_holidays;
+    if (printSumLeave) printSumLeave.textContent = data.summary.total_leave_days;
+    if (printSumAbsent) printSumAbsent.textContent = data.summary.total_absent_days;
+    if (printSumTotal) printSumTotal.textContent = data.total_days;
+    
+    const printTbody = document.getElementById("print-timesheet-tbody");
+    if (!printTbody) return;
+    
+    printTbody.innerHTML = data.days.map(d => {
+        const dayLabel = d.day_num.toString().padStart(2, '0');
+        if (d.is_holiday) {
+            return `
+                <tr style="background: #f8fafc; color: #64748b;">
+                    <td style="text-align: center; font-weight: bold;">${dayLabel}</td>
+                    <td style="text-align: center;">${d.weekday_name}</td>
+                    <td style="text-align: center;">-</td>
+                    <td style="text-align: center; font-size: 8pt; color: #94a3b8;">(วันหยุด)</td>
+                    <td style="text-align: center;">-</td>
+                    <td style="text-align: center; font-size: 8pt; color: #94a3b8;">(วันหยุด)</td>
+                    <td style="font-size: 8.5pt; font-style: italic;">${escapeHtml(d.remarks || 'วันหยุดราชการ')}</td>
+                </tr>
+            `;
+        }
+        
+        return `
+            <tr>
+                <td style="text-align: center; font-weight: bold;">${dayLabel}</td>
+                <td style="text-align: center;">${d.weekday_name}</td>
+                <td style="text-align: center; font-weight: bold;">${d.time_in || ''}</td>
+                <td style="text-align: center;"></td>
+                <td style="text-align: center; font-weight: bold;">${d.time_out || ''}</td>
+                <td style="text-align: center;"></td>
+                <td style="font-size: 8.5pt;">${escapeHtml(d.remarks || '')}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function saveDriverTimesheetChanges() {
+    if (!currentTimesheetData) return;
+    
+    const driverSelect = document.getElementById("timesheet-driver-select");
+    const monthSelect = document.getElementById("timesheet-month-select");
+    const driverId = parseInt(driverSelect.value);
+    const reportMonth = monthSelect.value;
+    
+    const rows = document.querySelectorAll("#interactive-timesheet-tbody tr");
+    const items = [];
+    
+    rows.forEach(tr => {
+        const dayNum = parseInt(tr.getAttribute("data-day"));
+        const inInput = tr.querySelector(".ts-in");
+        const outInput = tr.querySelector(".ts-out");
+        const remInput = tr.querySelector(".ts-rem");
+        
+        if (inInput || outInput || remInput) {
+            items.push({
+                day_num: dayNum,
+                time_in: inInput ? inInput.value.trim() : "",
+                time_out: outInput ? outInput.value.trim() : "",
+                remarks: remInput ? remInput.value.trim() : ""
+            });
+        }
+    });
+    
+    try {
+        const res = await fetch("/api/driver-timesheet/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: reportMonth,
+                items: items
+            })
+        });
+        
+        const resp = await res.json();
+        if (res.ok) {
+            alert("💾 " + resp.message);
+            await loadDriverTimesheet();
+        } else {
+            alert("❌ " + (resp.detail || "บันทึกไม่สำเร็จ"));
+        }
+    } catch (e) {
+        console.error("Save timesheet error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+async function resetDriverTimesheetAuto() {
+    if (!confirm("⚠️ คุณต้องการรีเซ็ตเวลาปฏิบัติงานกลับเป็นค่าคำนวณอัตโนมัติทั้งหมดหรือไม่?")) {
+        return;
+    }
+    
+    const driverSelect = document.getElementById("timesheet-driver-select");
+    const monthSelect = document.getElementById("timesheet-month-select");
+    const driverId = parseInt(driverSelect.value);
+    const reportMonth = monthSelect.value;
+    
+    try {
+        const res = await fetch("/api/driver-timesheet/reset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                driver_id: driverId,
+                report_month: reportMonth
+            })
+        });
+        
+        const resp = await res.json();
+        if (res.ok) {
+            alert("🔄 " + resp.message);
+            await loadDriverTimesheet();
+        } else {
+            alert("❌ " + (resp.detail || "รีเซ็ตไม่สำเร็จ"));
+        }
+    } catch (e) {
+        console.error("Reset timesheet error:", e);
+        alert(`เกิดข้อผิดพลาด: ${e.message}`);
+    }
+}
+
+function printDriverTimesheet() {
+    if (!currentTimesheetData) {
+        alert("⚠️ กรุณารอโหลดข้อมูลให้เสร็จก่อนสั่งพิมพ์");
+        return;
+    }
+    
+    // Sync inputs to print template
+    const rows = document.querySelectorAll("#interactive-timesheet-tbody tr");
+    rows.forEach(tr => {
+        const dayNum = parseInt(tr.getAttribute("data-day"));
+        const inInput = tr.querySelector(".ts-in");
+        const outInput = tr.querySelector(".ts-out");
+        const remInput = tr.querySelector(".ts-rem");
+        
+        const d = currentTimesheetData.days.find(x => x.day_num === dayNum);
+        if (d) {
+            if (inInput) d.time_in = inInput.value.trim();
+            if (outInput) d.time_out = outInput.value.trim();
+            if (remInput) d.remarks = remInput.value.trim();
+        }
+    });
+    
+    renderPrintDriverTimesheet(currentTimesheetData);
+    
+    document.body.className = "printing-driver-timesheet";
+    window.print();
+    setTimeout(() => {
+        document.body.className = "";
+    }, 1000);
+}
