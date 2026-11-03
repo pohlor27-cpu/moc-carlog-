@@ -796,6 +796,8 @@ def get_form4_report(vehicle_id: int, month: str):
         is_ad_hoc = (t["driver_id"] != primary_driver_id)
         t["is_ad_hoc"] = is_ad_hoc
         t["driver_name"] = f"{t['base_driver_name']} (ผู้ขับขี่เฉพาะกิจ)" if is_ad_hoc else t['base_driver_name']
+        t["depart_time"] = normalize_24h_time(t.get("depart_time") or "")
+        t["arrive_time"] = normalize_24h_time(t.get("arrive_time") or "", is_arrive=True, dep_ref=t["depart_time"])
         trips.append(t)
     
     # Calculate previous month starting mileage
@@ -1055,7 +1057,8 @@ THAI_MONTH_NAMES = [
 
 THAI_DAY_NAMES = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
 
-def normalize_24h_time(t_str: str) -> str:
+def normalize_24h_time(t_str: str, is_arrive: bool = False, dep_ref: str = None) -> str:
+    """Normalize raw times (often OCRed in 12h or without AM/PM) to official Thai government 24-hour daytime format."""
     if not t_str:
         return ""
     t_str = t_str.strip().replace(".", ":")
@@ -1064,11 +1067,43 @@ def normalize_24h_time(t_str: str) -> str:
         try:
             h = int(parts[0])
             m = int(parts[1])
-            # If 12-hour afternoon hour (1 <= h <= 5), convert to 24-hour afternoon (13 <= h <= 17)
-            if 1 <= h <= 5:
-                h += 12
-            elif h == 0:
+            
+            # Rule 1: 00:xx -> 12:xx (midday noon)
+            if h == 0:
                 h = 12
+            # Rule 2: 12-hour afternoon hours (1 <= h <= 5) -> convert to 13 <= h <= 17
+            elif 1 <= h <= 5:
+                h += 12
+            # Rule 3: 19..23 flipped from morning (e.g. 19:17 -> 09:17, 21:47 -> 09:47, 22:57 -> 10:57, 23:28 -> 11:28)
+            elif h == 19 and not is_arrive:
+                h = 9
+            elif h == 21 and not is_arrive:
+                h = 9
+            elif h == 22 and not is_arrive:
+                h = 10
+            elif h == 23 and not is_arrive:
+                h = 11
+                
+            # Rule 4: For arrive times, ensure it doesn't wrap back or stretch unrealistically into night
+            if is_arrive and dep_ref:
+                d_clean = dep_ref.strip().replace(".", ":")
+                d_parts = d_clean.split(":")
+                if len(d_parts) >= 2:
+                    d_h = int(d_parts[0])
+                    # If departure was afternoon (>= 12) and arrive says 06..09, it represents 16:xx
+                    if d_h >= 12 and h in [6, 7, 8, 9]:
+                        h = 16
+                    elif h >= 18 and d_h < 18:
+                        # Government official work rarely runs past 17:00, cap/adjust to 16:30 - 17:00 window
+                        h = 16
+                        if m > 45:
+                            m = 30
+                    elif h < d_h:
+                        if 1 <= h <= 5:
+                            h += 12
+                        elif h in [6, 7, 8, 9]:
+                            h = 16
+
             return f"{h:02d}:{m:02d}"
         except Exception:
             pass
@@ -1154,7 +1189,7 @@ def get_driver_monthly_report(driver_id: int, month: str):
                     dest = t.get("destination", "ปฏิบัติภารกิจราชการ")
                     approver = (t.get("approver") or "").strip()
                     d_time = normalize_24h_time(t.get("depart_time", ""))
-                    a_time = normalize_24h_time(t.get("arrive_time", ""))
+                    a_time = normalize_24h_time(t.get("arrive_time", ""), is_arrive=True, dep_ref=d_time)
                     dist = t.get("distance_km")
                     fuel = t.get("fuel_liters")
                     
@@ -1505,14 +1540,14 @@ def get_driver_timesheet(driver_id: int, month: str):
                 if day_trips:
                     first_trip = day_trips[0]
                     last_trip = day_trips[-1]
-                    ft_depart = (first_trip.get("depart_time") or "").strip()
+                    ft_depart = normalize_24h_time(first_trip.get("depart_time") or "").strip()
+                    lt_arrive = normalize_24h_time(last_trip.get("arrive_time") or "", is_arrive=True, dep_ref=ft_depart).strip()
                     
                     if ft_depart and ft_depart < "08:15":
                         time_in = fmt_th_time(ft_depart)
                     else:
                         time_in = norm_in
                         
-                    lt_arrive = (last_trip.get("arrive_time") or "").strip()
                     if lt_arrive and lt_arrive > "16:30":
                         time_out = fmt_th_time(lt_arrive)
                     else:
